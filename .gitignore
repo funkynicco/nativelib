@@ -1,0 +1,8 @@
+# gitignore
+
+.vs/
+win32/x64/
+win32/Debug/
+win32/Release/
+
+*.user

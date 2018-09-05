@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\src\StdAfx.h" />
+    <ClInclude Include="..\include\NativeLib\Vector.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NativeLib\Allocators.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NativeLib\Definitions.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NativeLib\Assert.h">
+      <Filter>lib</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\NativeLib.cpp" />
+    <ClCompile Include="..\src\StdAfx.cpp" />
+    <ClCompile Include="..\src\Assert.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="lib">
+      <UniqueIdentifier>{528ec1b2-078e-4c14-b239-8f16bfa8c0ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{6fb48deb-61d5-4707-b06d-c80035d90851}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
