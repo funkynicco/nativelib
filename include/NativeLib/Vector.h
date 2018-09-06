@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Allocators.h"
-#include "Assert.h"
+#include <NativeLib/Allocators.h>
+#include <NativeLib/Assert.h>
 
 namespace nl
 {

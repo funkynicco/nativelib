@@ -2,14 +2,18 @@
 
 #include <NativeLib/Assert.h>
 
-nl::pfnAssertHandler g_assertHandler = nullptr;
-
-void nl::SetAssertHandler(nl::pfnAssertHandler assertHandler)
+nl::assert::pfnAssertHandler& GetAssertHandlerPointer()
 {
-    g_assertHandler = assertHandler;
+    static nl::assert::pfnAssertHandler ptr = nullptr;
+    return ptr;
 }
 
-void nl::CallAssertHandler(const char* expression, const char* filename, int line, const char* function)
+void nl::assert::SetAssertHandler(nl::assert::pfnAssertHandler assertHandler)
+{
+    GetAssertHandlerPointer() = assertHandler;
+}
+
+void nl::assert::CallAssertHandler(const char* expression, const char* filename, int line, const char* function)
 {
     Assert assert = {};
     assert.Expression = expression;
@@ -17,6 +21,6 @@ void nl::CallAssertHandler(const char* expression, const char* filename, int lin
     assert.Line = line;
     assert.Function = function;
 
-    if (g_assertHandler)
-        g_assertHandler(assert);
+    if (GetAssertHandlerPointer())
+        GetAssertHandlerPointer()(assert);
 }

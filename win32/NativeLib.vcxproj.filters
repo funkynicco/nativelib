@@ -14,6 +14,9 @@
     <ClInclude Include="..\include\NativeLib\Assert.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\NativeLib\String.h">
+      <Filter>lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\NativeLib.cpp" />
