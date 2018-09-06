@@ -13,4 +13,8 @@ namespace nl
         virtual LONG AddRef() = 0;
         virtual LONG Release() = 0;
     };
+
+    IAllocator* GetAllocator();
+    void SetAllocator(IAllocator* allocator);
+    void ReleaseAllocator();
 }

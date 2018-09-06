@@ -6,12 +6,25 @@
 #include <cstring>
 #include <any>
 #include <array>
+#include <cstdio>
 
 // mutable string (it changes itself; for performance benefit in C++)
 
 namespace nl
 {
-    template <size_t StackSize>
+    namespace string
+    {
+        enum class Flags : int
+        {
+            None = 0,
+            ExponentialCapacity = (1 << 0),
+
+
+            Default = ExponentialCapacity
+        };
+    }
+
+    template <size_t StackSize, string::Flags Flags = string::Flags::Default>
     class BasicString
     {
     public:
@@ -19,75 +32,60 @@ namespace nl
 
         static_assert(StackSize >= 2, "StackSize should at least be 2 bytes or larger.");
 
-        inline BasicString(IAllocator* allocator) :
-            m_allocator(allocator),
+        inline BasicString() :
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            allocator->AddRef();
             *m_stack = 0;
         }
 
         inline ~BasicString()
         {
             if (m_pString != m_stack)
-                m_allocator->Free(m_pString);
-
-            m_allocator->Release();
+                GetAllocator()->Free(m_pString);
         }
 
-        inline BasicString(IAllocator* allocator, const char* str) :
-            m_allocator(allocator),
+        inline BasicString(const char* str) :
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            allocator->AddRef();
             size_t len = strlen(str);
             Set(str, len);
         }
 
-        inline BasicString(IAllocator* allocator, const void* str, size_t len) :
-            m_allocator(allocator),
+        inline BasicString(const void* str, size_t len) :
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            allocator->AddRef();
             Set(str, len);
         }
 
-        template <size_t OtherSize>
-        inline BasicString(const BasicString<OtherSize>& str) :
-            m_allocator(str.m_allocator),
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString(const BasicString<OtherSize, OtherFlags>& str) :
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            m_allocator->AddRef();
             Set(str.m_pString, str.m_nLength);
         }
 
         inline BasicString(const BasicString& str) :
-            m_allocator(str.m_allocator),
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            m_allocator->AddRef();
             Set(str.m_pString, str.m_nLength);
         }
 
-        template <size_t OtherSize>
-        inline BasicString(BasicString<OtherSize>&& str) :
-            m_allocator(str.m_allocator),
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString(BasicString<OtherSize, OtherFlags>&& str) :
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            m_allocator->AddRef();
-
             if (str.m_nLength + 1 > StackSize &&
                 str.m_pString != str.m_stack)
             {
@@ -101,13 +99,10 @@ namespace nl
         }
 
         inline BasicString(BasicString&& str) :
-            m_allocator(str.m_allocator),
             m_nCapacity(sizeof(m_stack)),
             m_nLength(0),
             m_pString(m_stack)
         {
-            m_allocator->AddRef();
-
             if (str.m_nLength + 1 > StackSize &&
                 str.m_pString != str.m_stack)
             {
@@ -132,26 +127,21 @@ namespace nl
             return *this;
         }
 
-        template <size_t OtherSize>
-        inline BasicString& operator =(const BasicString<OtherSize>& str)
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString& operator =(const BasicString<OtherSize, OtherFlags>& str)
         {
             Set(str.m_pString, str.m_nLength);
             return *this;
         }
 
-        template <size_t OtherSize>
-        inline BasicString& operator =(BasicString<OtherSize>&& str)
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString& operator =(BasicString<OtherSize, OtherFlags>&& str)
         {
             if (str.m_nLength + 1 > StackSize &&
                 str.m_pString != str.m_stack)
             {
                 if (m_pString != m_stack)
-                {
-                    m_allocator->Free(m_pString);
-                    m_allocator->Release();
-                    m_allocator = str.m_allocator;
-                    m_allocator->AddRef();
-                }
+                    GetAllocator()->Free(m_pString);
 
                 m_nCapacity = str.m_nCapacity;
                 m_nLength = str.m_nLength;
@@ -170,12 +160,7 @@ namespace nl
                 str.m_pString != str.m_stack)
             {
                 if (m_pString != m_stack)
-                {
-                    m_allocator->Free(m_pString);
-                    m_allocator->Release();
-                    m_allocator = str.m_allocator;
-                    m_allocator->AddRef();
-                }
+                    GetAllocator()->Free(m_pString);
 
                 m_nCapacity = str.m_nCapacity;
                 m_nLength = str.m_nLength;
@@ -188,8 +173,17 @@ namespace nl
             return *this;
         }
 
-        inline char& operator [](size_t index) { return m_pString[index]; }
-        inline char operator [](size_t index) const { return m_pString[index]; }
+        inline char& operator [](size_t index)
+        {
+            nl_assert_if_debug(index < m_nLength);
+            return m_pString[index];
+        }
+
+        inline char operator [](size_t index) const
+        {
+            nl_assert_if_debug(index < m_nLength);
+            return m_pString[index];
+        }
 
         inline const char* c_str() const { return m_pString; }
         inline operator const char*() const { return m_pString; }
@@ -197,8 +191,8 @@ namespace nl
         inline size_t GetLength() const { return m_nLength; }
         inline size_t GetCapacity() const { return m_nCapacity; }
 
-        template <size_t OtherSize>
-        inline BasicString operator +(const BasicString<OtherSize>& str) const
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString operator +(const BasicString<OtherSize, OtherFlags>& str) const
         {
             BasicString result = *this;
             result.Append(str.m_pString, str.m_nLength);
@@ -219,14 +213,14 @@ namespace nl
             return result;
         }
 
-        template <size_t OtherSize>
-        inline BasicString& operator +=(const BasicString<OtherSize>& str) { Append(str.m_pString, str.m_nLength); return *this; }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString& operator +=(const BasicString<OtherSize, OtherFlags>& str) { Append(str.m_pString, str.m_nLength); return *this; }
         inline BasicString& operator +=(const BasicString& str) { Append(str.m_pString, str.m_nLength); return *this; }
         inline BasicString& operator +=(const char* str) { Append(str, strlen(str)); return *this; }
 
         inline bool operator ==(const char* str) const { return strcmp(m_pString, str) == 0; }
-        template <size_t OtherSize>
-        inline bool operator ==(const BasicString<OtherSize>& str) { return strcmp(m_pString, str.m_pString) == 0; }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline bool operator ==(const BasicString<OtherSize, OtherFlags>& str) { return strcmp(m_pString, str.m_pString) == 0; }
         inline bool operator ==(const BasicString& str) { return strcmp(m_pString, str.m_pString) == 0; }
 
         inline void Clear()
@@ -246,8 +240,8 @@ namespace nl
         inline void Append(char c) { Append(&c, 1); }
 
         inline void Append(const char* str) { Append(str, strlen(str)); }
-        template <size_t OtherSize>
-        inline void Append(const BasicString<OtherSize>& str) { Append(str.m_pString, str.m_nLength); }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline void Append(const BasicString<OtherSize, OtherFlags>& str) { Append(str.m_pString, str.m_nLength); }
         inline void Append(const BasicString& str) { Append(str.m_pString, str.m_nLength); }
 
         inline BasicString Append(const void* str, size_t len) const
@@ -258,8 +252,8 @@ namespace nl
         }
 
         inline BasicString Append(const char* str) const { return Append(str, strlen(str)); }
-        template <size_t OtherSize>
-        inline BasicString Append(const BasicString<OtherSize>& str) const { return Append(str.m_pString, str.m_nLength); }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline BasicString Append(const BasicString<OtherSize, OtherFlags>& str) const { return Append(str.m_pString, str.m_nLength); }
         inline BasicString Append(const BasicString& str) const { return Append(str.m_pString, str.m_nLength); }
 
         inline void Delete(size_t index, size_t count)
@@ -286,7 +280,7 @@ namespace nl
 
         inline size_t IndexOf(const void* str, size_t len, size_t start) const
         {
-            nl_assert(start <= m_nLength);
+            nl_assert_if_debug(start <= m_nLength);
             if (len > m_nLength)
                 return npos;
 
@@ -311,8 +305,8 @@ namespace nl
         }
 
         inline size_t IndexOf(const char* str, size_t start = 0) const { return IndexOf(str, strlen(str), start); }
-        template <size_t OtherSize>
-        inline size_t IndexOf(const BasicString<OtherSize>& str, size_t start = 0) const { return IndexOf(str.m_pString, str.m_nLength, start); }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline size_t IndexOf(const BasicString<OtherSize, OtherFlags>& str, size_t start = 0) const { return IndexOf(str.m_pString, str.m_nLength, start); }
         inline size_t IndexOf(const BasicString& str, size_t start = 0) const { return IndexOf(str.m_pString, str.m_nLength, start); }
         inline size_t IndexOf(char c, size_t start = 0) const { return IndexOf(&c, 1, start); }
 
@@ -321,34 +315,34 @@ namespace nl
             if (count == npos)
                 count = m_nLength - index;
 
-            nl_assert(index + count <= m_nLength);
+            nl_assert_if_debug(index + count <= m_nLength);
             return BasicString(m_pString + index, count);
         }
 
         inline bool StartsWith(const void* str, size_t len) const
         {
             if (len > m_nLength)
-                return FALSE;
+                return false;
 
             return memcmp(m_pString, str, len) == 0;
         }
 
         inline bool StartsWith(const char* str) const { return StartsWith(str, strlen(str)); }
-        template <size_t OtherSize>
-        inline bool StartsWith(const BasicString<OtherSize>& str) const { return StartsWith(str.m_pString, str.m_nLength); }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline bool StartsWith(const BasicString<OtherSize, OtherFlags>& str) const { return StartsWith(str.m_pString, str.m_nLength); }
         inline bool StartsWith(const BasicString& str) const { return StartsWith(str.m_pString, str.m_nLength); }
 
         inline bool EndsWith(const void* str, size_t len) const
         {
             if (len > m_nLength)
-                return FALSE;
+                return false;
 
             return memcmp(m_pString + m_nLength - len, str, len) == 0;
         }
 
         inline bool EndsWith(const char* str) const { return EndsWith(str, strlen(str)); }
-        template <size_t OtherSize>
-        inline bool EndsWith(const BasicString<OtherSize>& str) const { return EndsWith(str.m_pString, str.m_nLength); }
+        template <size_t OtherSize, string::Flags OtherFlags>
+        inline bool EndsWith(const BasicString<OtherSize, OtherFlags>& str) const { return EndsWith(str.m_pString, str.m_nLength); }
         inline bool EndsWith(const BasicString& str) const { return EndsWith(str.m_pString, str.m_nLength); }
 
         inline void PadLeft(size_t count, char ch = ' ') // right-aligns characters
@@ -411,16 +405,26 @@ namespace nl
             if (nCapacity <= m_nCapacity)
                 return;
 
-            m_nCapacity = nCapacity;
+            if constexpr ((int)Flags & (int)string::Flags::ExponentialCapacity)
+            {
+                size_t newCapacity = m_nCapacity;
+                while (newCapacity < nCapacity)
+                    newCapacity *= 2;
+
+                m_nCapacity = newCapacity;
+            }
+            else
+                m_nCapacity = nCapacity;
+
             if (m_pString == m_stack)
             {
-                m_pString = reinterpret_cast<char*>(m_allocator->Allocate(m_nCapacity));
+                m_pString = reinterpret_cast<char*>(GetAllocator()->Allocate(m_nCapacity));
                 nl_assert(m_pString != NULL);
                 memcpy(m_pString, m_stack, GetLength() + 1);
             }
             else
             {
-                m_pString = reinterpret_cast<char*>(m_allocator->Reallocate(m_pString, m_nCapacity));
+                m_pString = reinterpret_cast<char*>(GetAllocator()->Reallocate(m_pString, m_nCapacity));
                 nl_assert(m_pString != NULL);
             }
         }
@@ -435,37 +439,60 @@ namespace nl
         }
 
 #define AppendTemplateValue_Impl_For(type) \
-    template <size_t OtherSize, std::enable_if_t<std::is_same_v<type, type>>* = nullptr> \
-    inline static void AppendTemplateValue(IAllocator* allocator, BasicString<OtherSize>& str, type value)
+    template <size_t OtherSize, string::Flags OtherFlags, std::enable_if_t<std::is_same_v<type, type>>* = nullptr> \
+    inline static void AppendTemplateValue(BasicString<OtherSize, OtherFlags>& str, type value)
 
-        AppendTemplateValue_Impl_For(const char*)
-        {
-            str.Append(value);
-        }
-
-        AppendTemplateValue_Impl_For(int)
-        {
-            str.Append(IntToString(allocator, value));
-        }
+        AppendTemplateValue_Impl_For(const char*) { str.Append(value); }
+        AppendTemplateValue_Impl_For(char) { str.Append(value); }
+        AppendTemplateValue_Impl_For(unsigned char) { str.Append(NumberToStringUnsigned(value)); }
+        AppendTemplateValue_Impl_For(short) { str.Append(NumberToString(value)); }
+        AppendTemplateValue_Impl_For(unsigned short) { str.Append(NumberToStringUnsigned(value)); }
+        AppendTemplateValue_Impl_For(int) { str.Append(NumberToString(value)); }
+        AppendTemplateValue_Impl_For(unsigned int) { str.Append(NumberToStringUnsigned(value)); }
+        AppendTemplateValue_Impl_For(long) { str.Append(NumberToString(value)); }
+        AppendTemplateValue_Impl_For(unsigned long) { str.Append(NumberToStringUnsigned(value)); }
+        AppendTemplateValue_Impl_For(long long) { str.Append(NumberToString(value)); }
+        AppendTemplateValue_Impl_For(unsigned long long) { str.Append(NumberToStringUnsigned(value)); }
 
         AppendTemplateValue_Impl_For(float)
         {
-            str.Append(IntToString(allocator, (int)value));
+            char buf[32];
+            int len = snprintf(buf, 32, "%f", value);
+            str.Append(buf, len);
+        }
+
+        AppendTemplateValue_Impl_For(double)
+        {
+            char buf[64];
+            int len = snprintf(buf, 64, "%lf", value);
+            str.Append(buf, len);
+        }
+
+        AppendTemplateValue_Impl_For(const void*)
+        {
+            char buf[64];
+            int len = snprintf(buf, 64, "0x%p", value);
+            str.Append(buf, len);
         }
 
         template <
             size_t OtherSize,
+            string::Flags OtherFlags,
             size_t ThirdSize,
-            std::enable_if_t<std::is_same_v<const BasicString<ThirdSize>&, const BasicString<ThirdSize>&>>* = nullptr>
-        inline static void AppendTemplateValue(IAllocator* allocator, BasicString<OtherSize>& str, const BasicString<ThirdSize>& value)
+            string::Flags ThirdFlags,
+            std::enable_if_t<std::is_same_v<const BasicString<ThirdSize, ThirdFlags>&, const BasicString<ThirdSize, ThirdFlags>&>>* = nullptr>
+            inline static void AppendTemplateValue(BasicString<OtherSize, OtherFlags>& str, const BasicString<ThirdSize, ThirdFlags>& value)
         {
             str.Append(value);
         }
 
-        inline static BasicString IntToString(IAllocator* allocator, int value)
+#undef AppendTemplateValue_Impl_For
+
+        inline static BasicString NumberToString(long long value)
         {
-            char buf[32] = {};
-            char* p = buf + sizeof(buf) - 1;
+            char buf[64] = {};
+            char* p_end = buf + sizeof(buf) - 1;
+            char* p = p_end;
 
             bool is_negative = value < 0;
             if (is_negative)
@@ -477,17 +504,38 @@ namespace nl
                 value /= 10;
             }
 
+
+            if (p == p_end)
+                *--p = '0';
+
             if (is_negative)
                 *--p = '-';
 
-            return BasicString(allocator, p);
+            return BasicString(p, size_t(p_end - p));
+        }
+
+        inline static BasicString NumberToStringUnsigned(unsigned long long value)
+        {
+            char buf[64] = {};
+            char* p_end = buf + sizeof(buf) - 1;
+            char* p = p_end;
+
+            while (value != 0)
+            {
+                *--p = '0' + (value % 10);
+                value /= 10;
+            }
+
+            if (p == p_end)
+                *--p = '0';
+
+            return BasicString(p, size_t(p_end - p));
         }
 
         // this handles when Args... gets empty, as an overload for when the "T value" is not supplied
-        template <size_t OtherSize>
+        template <size_t OtherSize, string::Flags OtherFlags>
         inline static void Test(
-            IAllocator* allocator,
-            BasicString<OtherSize>& output,
+            BasicString<OtherSize, OtherFlags>& output,
             const char* format,
             const char* format_end)
         {
@@ -514,10 +562,9 @@ namespace nl
             }
         }
 
-        template <size_t OtherSize, typename T, typename... Args>
+        template <size_t OtherSize, string::Flags OtherFlags, typename T, typename... Args>
         inline static void Test(
-            IAllocator* allocator,
-            BasicString<OtherSize>& output,
+            BasicString<OtherSize, OtherFlags>& output,
             const char* format,
             const char* format_end,
             const T& value,
@@ -541,10 +588,10 @@ namespace nl
                     if (*format != '}')
                         return;
 
-                    AppendTemplateValue(allocator, output, value);
+                    AppendTemplateValue(output, value);
                     ++format;
 
-                    Test(allocator, output, format, format_end, args...);
+                    Test(output, format, format_end, args...);
                     return;
                 }
                 else if (*format == '}' &&
@@ -560,14 +607,14 @@ namespace nl
         }
 
         template <typename... Args>
-        inline static BasicString Format(IAllocator* allocator, const char* format, const Args&... args)
+        inline static BasicString Format(const char* format, const Args&... args)
         {
-            BasicString output(allocator);
+            BasicString output;
             const char* format_end = format + strlen(format);
 
             //std::array<std::any, sizeof...(args)> test = { args... };
 
-            Test(allocator, output, format, format_end, args...);
+            Test(output, format, format_end, args...);
 
             return output;
         }
@@ -640,17 +687,31 @@ namespace nl
 #endif
 
     private:
-        template <size_t> friend class BasicString;
-
-        IAllocator* m_allocator;
+        template <size_t, string::Flags> friend class BasicString;
 
         size_t m_nCapacity;
         size_t m_nLength;
         char* m_pString;
         char m_stack[StackSize];
-};
+    };
 
-    typedef BasicString<256> LargeString;
-    typedef BasicString<64> String;
-    typedef BasicString<16> TinyString;
+#if 0
+    using LargeString = BasicString<256, string::Flags::Default>;
+    using String = BasicString<64, string::Flags::Default>;
+    using TinyString = BasicString<16, string::Flags::Default>;
+
+    namespace templates
+    {
+#endif
+        template <string::Flags Flags = string::Flags::Default>
+        using LargeString = BasicString<256, Flags>;
+
+        template <string::Flags Flags = string::Flags::Default>
+        using String = BasicString<64, Flags>;
+
+        template <string::Flags Flags = string::Flags::Default>
+        using TinyString = BasicString<16, Flags>;
+#if 0
+    }
+#endif
 }

@@ -345,6 +345,7 @@
     <ClInclude Include="..\src\StdAfx.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\Allocators.cpp" />
     <ClCompile Include="..\src\Assert.cpp" />
     <ClCompile Include="..\src\NativeLib.cpp" />
     <ClCompile Include="..\src\StdAfx.cpp">

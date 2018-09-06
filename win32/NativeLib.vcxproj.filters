@@ -24,6 +24,9 @@
     <ClCompile Include="..\src\Assert.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Allocators.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="lib">
