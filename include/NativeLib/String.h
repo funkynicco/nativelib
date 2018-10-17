@@ -500,6 +500,22 @@ namespace nl
 		}
 #endif
 
+#if defined(_STD) and defined(_STRING_)
+        AppendTemplateValue_Impl_For(const std::string&)
+        {
+            str.Append(value.c_str(), value.length());
+        }
+
+        AppendTemplateValue_Impl_For(const std::wstring&)
+        {
+            size_t required_len = (size_t)WideCharToMultiByte(CP_UTF8, 0, value.c_str(), (int)value.length(), nullptr, 0, nullptr, nullptr);
+            str.EnsureCapacity(str.m_nLength + required_len);
+            WideCharToMultiByte(CP_UTF8, 0, value.c_str(), (int)value.length(), str.m_pString + str.m_nLength, (int)required_len, nullptr, nullptr);
+            str.m_nLength += required_len - 1;
+            str.m_pString[str.m_nLength] = 0;
+        }
+#endif
+
 		template <
 			size_t OtherSize,
 			string::Flags OtherFlags,
