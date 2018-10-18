@@ -509,9 +509,9 @@ namespace nl
         AppendTemplateValue_Impl_For(const std::wstring&)
         {
             size_t required_len = (size_t)WideCharToMultiByte(CP_UTF8, 0, value.c_str(), (int)value.length(), nullptr, 0, nullptr, nullptr);
-            str.EnsureCapacity(str.m_nLength + required_len);
+            str.EnsureCapacity(str.m_nLength + required_len + 1);
             WideCharToMultiByte(CP_UTF8, 0, value.c_str(), (int)value.length(), str.m_pString + str.m_nLength, (int)required_len, nullptr, nullptr);
-            str.m_nLength += required_len - 1;
+            str.m_nLength += required_len;
             str.m_pString[str.m_nLength] = 0;
         }
 #endif
