@@ -340,6 +340,7 @@
     <ClInclude Include="..\include\NativeLib\Allocators.h" />
     <ClInclude Include="..\include\NativeLib\Assert.h" />
     <ClInclude Include="..\include\NativeLib\Definitions.h" />
+    <ClInclude Include="..\include\NativeLib\Exceptions.h" />
     <ClInclude Include="..\include\NativeLib\String.h" />
     <ClInclude Include="..\include\NativeLib\Vector.h" />
     <ClInclude Include="..\src\StdAfx.h" />
@@ -347,6 +348,7 @@
   <ItemGroup>
     <ClCompile Include="..\src\Allocators.cpp" />
     <ClCompile Include="..\src\Assert.cpp" />
+    <ClCompile Include="..\src\Exceptions.cpp" />
     <ClCompile Include="..\src\NativeLib.cpp" />
     <ClCompile Include="..\src\StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug MD|Win32'">Create</PrecompiledHeader>

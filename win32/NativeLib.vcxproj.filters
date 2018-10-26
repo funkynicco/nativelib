@@ -17,6 +17,9 @@
     <ClInclude Include="..\include\NativeLib\String.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\NativeLib\Exceptions.h">
+      <Filter>lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\NativeLib.cpp" />
@@ -25,6 +28,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Allocators.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Exceptions.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
