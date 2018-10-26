@@ -30,3 +30,5 @@ private:
 #define DeclareGenericException(name, msg) class name : public Exception {public: inline name():Exception(msg){}};
 
 DeclareGenericException(BadAllocationException, L"Bad allocation");
+
+#undef DeclareGenericException
