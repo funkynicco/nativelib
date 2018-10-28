@@ -29,6 +29,8 @@ private:
 
 #define DeclareGenericException(name, msg) class name : public Exception {public: inline name():Exception(msg){}};
 
+
+DeclareGenericException(AbortApplicationException, L"Abort application");
 DeclareGenericException(BadAllocationException, L"Bad allocation");
 
 #undef DeclareGenericException
