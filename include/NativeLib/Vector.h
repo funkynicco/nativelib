@@ -2,6 +2,7 @@
 
 #include <NativeLib/Allocators.h>
 #include <NativeLib/Assert.h>
+#include <NativeLib/Exceptions.h>
 
 namespace nl
 {
@@ -159,8 +160,7 @@ namespace nl
         inline Vector& operator =(const Vector& vector)
         {
             Clear();
-            if (!PrepareAdd(vector.m_uCount))
-                return *this;
+            PrepareAdd(vector.m_uCount);
 
             m_uCount = vector.m_uCount;
             CopyElements<true>(m_pArray, vector.m_pArray, m_uCount);
@@ -188,8 +188,7 @@ namespace nl
             }
             else
             {
-                if (!PrepareAdd(vector.m_uCount))
-                    return *this;
+                PrepareAdd(vector.m_uCount);
 
                 m_uCount = vector.m_uCount;
                 MoveElements<true>(m_pArray, vector.m_pArray, vector.m_uCount);
@@ -269,28 +268,27 @@ namespace nl
             return true;
         }
 
-        inline bool Reserve(size_t size)
+        inline void Reserve(size_t size)
         {
             if (m_uSize > size)
-                return true;
+                return;
 
-            return Expand(size - m_uSize);
+            Expand(size - m_uSize);
         }
 
-        inline bool PrepareAdd(size_t uCount)
+        inline void PrepareAdd(size_t uCount)
         {
             size_t uNewSize = m_uCount + uCount;
             if (uNewSize <= m_uSize)
-                return true;
+                return;
 
-            return Expand(uNewSize - m_uSize);
+            Expand(uNewSize - m_uSize);
         }
 
         inline bool Add(const T& value)
         {
-            if (m_uCount == m_uSize &&
-                !Expand(1))
-                return false;
+            if (m_uCount == m_uSize)
+                Expand(1);
 
             if constexpr (std::is_trivial_v<T>)
                 m_pArray[m_uCount++] = value;
@@ -302,9 +300,8 @@ namespace nl
 
         inline bool Add(T&& value)
         {
-            if (m_uCount == m_uSize &&
-                !Expand(1))
-                return false;
+            if (m_uCount == m_uSize)
+                Expand(1);
 
             if constexpr (std::is_trivial_v<T>)
                 m_pArray[m_uCount++] = std::move(value);
@@ -362,8 +359,7 @@ namespace nl
 
             Vector result(m_allocator);
 
-            if (!result.PrepareAdd(uCount))
-                return result;
+            result.PrepareAdd(uCount);
 
             result.CopyElements<true>(result.m_pArray, &m_pArray[uIndex], uCount);
             result.m_uCount = uCount;
@@ -443,7 +439,7 @@ namespace nl
                 memcpy(pNew, pOld, uCount * sizeof(T));
         }
 
-        inline bool Expand(size_t uAdd)
+        inline void Expand(size_t uAdd)
         {
             size_t uRequiredSize = m_uSize + uAdd;
             size_t uNewSize = m_uSize;
@@ -456,7 +452,7 @@ namespace nl
 
             T* pNewArray = reinterpret_cast<T*>(m_allocator->Allocate(uNewSize * sizeof(T)));
             if (!pNewArray)
-                return false;
+                throw BadAllocationException();
 
             MoveElements<true>(pNewArray, m_pArray, m_uCount);
 
