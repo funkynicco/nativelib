@@ -34,6 +34,15 @@ namespace nl
             return g_allocate(size);
         }
 
+        void* AllocateThrow(size_t size)
+        {
+            auto ptr = g_allocate(size);;
+            if (!ptr)
+                throw BadAllocationException();
+
+            return ptr;
+        }
+
         void* Reallocate(void* ptr, size_t size)
         {
             return g_reallocate(ptr, size);

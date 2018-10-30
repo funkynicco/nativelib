@@ -13,6 +13,7 @@ namespace nl
         void SetMemoryManagement(AllocateCallback allocate, ReallocateCallback reallocate, FreeCallback free);
 
         void* Allocate(size_t size);
+        void* AllocateThrow(size_t size);
         void* Reallocate(void* ptr, size_t size);
         void Free(void* ptr);
     }

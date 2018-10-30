@@ -444,7 +444,6 @@ namespace nl
 
             m_pArray = pNewArray;
             m_uSize = uNewSize;
-            return true;
         }
 
         size_t m_uSize;
