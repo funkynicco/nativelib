@@ -4,17 +4,16 @@
 
 namespace nl
 {
-    struct IAllocator
+    namespace memory
     {
-        virtual void* Allocate(size_t size) = 0;
-        virtual void* Reallocate(void* ptr, size_t newSize) = 0;
-        virtual void Free(void* ptr) = 0;
+        typedef void*(*AllocateCallback)(size_t size);
+        typedef void*(*ReallocateCallback)(void* ptr, size_t size);
+        typedef void(*FreeCallback)(void* ptr);
 
-        virtual LONG AddRef() = 0;
-        virtual LONG Release() = 0;
-    };
+        void SetMemoryManagement(AllocateCallback allocate, ReallocateCallback reallocate, FreeCallback free);
 
-    IAllocator* GetAllocator();
-    void SetAllocator(IAllocator* allocator);
-    void ReleaseAllocator();
+        void* Allocate(size_t size);
+        void* Reallocate(void* ptr, size_t size);
+        void Free(void* ptr);
+    }
 }

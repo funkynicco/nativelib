@@ -47,7 +47,7 @@ namespace nl
 		inline ~BasicString()
 		{
 			if (m_pString != m_stack)
-				GetAllocator()->Free(m_pString);
+				nl::memory::Free(m_pString);
 		}
 
 		inline BasicString(const char* str) :
@@ -145,7 +145,7 @@ namespace nl
 				str.m_pString != str.m_stack)
 			{
 				if (m_pString != m_stack)
-					GetAllocator()->Free(m_pString);
+                    nl::memory::Free(m_pString);
 
 				m_nCapacity = str.m_nCapacity;
 				m_nLength = str.m_nLength;
@@ -164,7 +164,7 @@ namespace nl
 				str.m_pString != str.m_stack)
 			{
 				if (m_pString != m_stack)
-					GetAllocator()->Free(m_pString);
+                    nl::memory::Free(m_pString);
 
 				m_nCapacity = str.m_nCapacity;
 				m_nLength = str.m_nLength;
@@ -432,13 +432,13 @@ namespace nl
 
 			if (m_pString == m_stack)
 			{
-				m_pString = reinterpret_cast<char*>(GetAllocator()->Allocate(m_nCapacity));
+				m_pString = reinterpret_cast<char*>(nl::memory::Allocate(m_nCapacity));
 				nl_assert(m_pString != NULL);
 				memcpy(m_pString, m_stack, GetLength() + 1);
 			}
 			else
 			{
-				m_pString = reinterpret_cast<char*>(GetAllocator()->Reallocate(m_pString, m_nCapacity));
+				m_pString = reinterpret_cast<char*>(nl::memory::Reallocate(m_pString, m_nCapacity));
 				nl_assert(m_pString != NULL);
 			}
 		}
@@ -695,7 +695,7 @@ namespace nl
 			return FormatArgs(format.c_str(), args);
 		}*/
 
-#ifdef _WIN32____
+#ifdef _WIN32
 		static BasicString FromHResult(HRESULT hr, va_list* l = NULL)
 		{
 			LPSTR pstr = NULL;

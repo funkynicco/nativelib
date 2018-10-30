@@ -342,6 +342,7 @@
     <ClInclude Include="..\include\NativeLib\Definitions.h" />
     <ClInclude Include="..\include\NativeLib\Exceptions.h" />
     <ClInclude Include="..\include\NativeLib\Math\Vector.h" />
+    <ClInclude Include="..\include\NativeLib\RAII.h" />
     <ClInclude Include="..\include\NativeLib\String.h" />
     <ClInclude Include="..\include\NativeLib\Vector.h" />
     <ClInclude Include="..\src\StdAfx.h" />
@@ -364,6 +365,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\include\NativeLib\Math\Vector.inl" />
+    <None Include="..\include\NativeLib\RAII.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

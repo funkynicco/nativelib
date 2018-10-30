@@ -4,26 +4,44 @@
 
 namespace nl
 {
-    static IAllocator* m_allocator = nullptr;
-
-    IAllocator* GetAllocator()
+    namespace memory
     {
-        nl_assert_if_debug(m_allocator != nullptr);
-        return m_allocator;
-    }
+        static AllocateCallback g_allocate = nullptr;
+        static ReallocateCallback g_reallocate = nullptr;
+        static FreeCallback g_free = nullptr;
 
-    void SetAllocator(IAllocator* allocator)
-    {
-        m_allocator = allocator;
-        m_allocator->AddRef();
-    }
-
-    void ReleaseAllocator()
-    {
-        if (m_allocator)
+        void SetMemoryManagement(AllocateCallback allocate, ReallocateCallback reallocate, FreeCallback free)
         {
-            m_allocator->Release();
-            m_allocator = nullptr;
+            if (!allocate)
+                throw ArgumentException(L"allocate must be set");
+
+            if (!reallocate)
+                throw ArgumentException(L"reallocate must be set");
+
+            if (!free)
+                throw ArgumentException(L"free must be set");
+
+            if (g_allocate)
+                throw InvalidOperationException(L"Setting memory allocation callbacks can only be done once.");
+
+            g_allocate = allocate;
+            g_reallocate = reallocate;
+            g_free = free;
+        }
+
+        void* Allocate(size_t size)
+        {
+            return g_allocate(size);
+        }
+
+        void* Reallocate(void* ptr, size_t size)
+        {
+            return g_reallocate(ptr, size);
+        }
+
+        void Free(void* ptr)
+        {
+            g_free(ptr);
         }
     }
 }

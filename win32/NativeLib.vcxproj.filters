@@ -23,6 +23,9 @@
     <ClInclude Include="..\include\NativeLib\Math\Vector.h">
       <Filter>lib\Math</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\NativeLib\RAII.h">
+      <Filter>lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\NativeLib.cpp" />
@@ -51,6 +54,9 @@
   <ItemGroup>
     <None Include="..\include\NativeLib\Math\Vector.inl">
       <Filter>lib\Math</Filter>
+    </None>
+    <None Include="..\include\NativeLib\RAII.inl">
+      <Filter>lib</Filter>
     </None>
   </ItemGroup>
 </Project>

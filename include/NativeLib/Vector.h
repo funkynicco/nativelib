@@ -93,11 +93,8 @@ namespace nl
         };
 
     public:
-        inline Vector(IAllocator* allocator) :
-            m_allocator(allocator)
+        inline Vector()
         {
-            allocator->AddRef();
-
             m_uCount = 0;
             m_uSize = InitialSize;
             m_pArray = reinterpret_cast<T*>(m_stack);
@@ -105,15 +102,12 @@ namespace nl
 
         inline Vector(const Vector& other)
         {
-            m_allocator = other.m_allocator;
-            m_allocator->AddRef();
-
             m_uCount = other.m_uCount;
 
             if (m_uCount > InitialSize)
             {
                 m_uSize = other.m_uSize;
-                m_pArray = reinterpret_cast<T*>(m_allocator->Allocate(m_uSize * sizeof(T)));
+                m_pArray = reinterpret_cast<T*>(nl::memory::Allocate(m_uSize * sizeof(T)));
             }
             else
             {
@@ -126,9 +120,6 @@ namespace nl
 
         inline Vector(Vector&& other)
         {
-            m_allocator = other.m_allocator;
-            m_allocator->AddRef();
-
             m_uCount = other.m_uCount;
 
             if (m_uCount > InitialSize)
@@ -152,9 +143,7 @@ namespace nl
             Clear();
 
             if (m_pArray != reinterpret_cast<T*>(m_stack))
-                m_allocator->Free(m_pArray);
-
-            m_allocator->Release();
+                nl::memory::Free(m_pArray);
         }
 
         inline Vector& operator =(const Vector& vector)
@@ -174,11 +163,7 @@ namespace nl
             if (vector.m_pArray != reinterpret_cast<T*>(vector.m_stack))
             {
                 if (m_pArray != reinterpret_cast<T*>(m_stack))
-                    m_allocator->Free(m_pArray);
-
-                m_allocator->Release();
-                m_allocator = vector.m_allocator;
-                m_allocator->AddRef();
+                    nl::memory::Free(m_pArray);
 
                 m_pArray = vector.m_pArray;
                 m_uSize = vector.m_uSize;
@@ -233,10 +218,10 @@ namespace nl
             m_uCount = 0;
         }
 
-        inline bool Shrink(bool compact)
+        inline void Shrink(bool compact)
         {
             if (m_pArray == reinterpret_cast<T*>(m_stack))
-                return true;
+                return;
 
             size_t uNewSize = m_uCount;
             if (!compact)
@@ -247,25 +232,23 @@ namespace nl
             }
 
             if (uNewSize >= m_uSize)
-                return true;
+                return;
 
             T* pNewArray = reinterpret_cast<T*>(m_stack);
             if (uNewSize > InitialSize)
             {
-                pNewArray = reinterpret_cast<T*>(m_allocator->Allocate(uNewSize * sizeof(T)));
+                pNewArray = reinterpret_cast<T*>(nl::memory::Allocate(uNewSize * sizeof(T)));
                 if (!pNewArray)
-                    return false;
+                    throw BadAllocationException();
             }
 
             MoveElements<true>(pNewArray, m_pArray, m_uCount);
 
             if (m_pArray != reinterpret_cast<T*>(m_stack))
-                m_allocator->Free(m_pArray);
+                nl::memory::Free(m_pArray);
 
             m_pArray = pNewArray;
             m_uSize = uNewSize;
-
-            return true;
         }
 
         inline void Reserve(size_t size)
@@ -357,7 +340,7 @@ namespace nl
         {
             nl_assert(uIndex + uCount <= m_uCount);
 
-            Vector result(m_allocator);
+            Vector result;
 
             result.PrepareAdd(uCount);
 
@@ -450,14 +433,14 @@ namespace nl
             while (uNewSize < uRequiredSize)
                 uNewSize *= 2;
 
-            T* pNewArray = reinterpret_cast<T*>(m_allocator->Allocate(uNewSize * sizeof(T)));
+            T* pNewArray = reinterpret_cast<T*>(nl::memory::Allocate(uNewSize * sizeof(T)));
             if (!pNewArray)
                 throw BadAllocationException();
 
             MoveElements<true>(pNewArray, m_pArray, m_uCount);
 
             if (m_pArray != reinterpret_cast<T*>(m_stack))
-                m_allocator->Free(m_pArray);
+                nl::memory::Free(m_pArray);
 
             m_pArray = pNewArray;
             m_uSize = uNewSize;
@@ -469,7 +452,5 @@ namespace nl
 
         T* m_pArray;
         char m_stack[InitialSize * sizeof(T)];
-
-        IAllocator* m_allocator;
     };
 }
