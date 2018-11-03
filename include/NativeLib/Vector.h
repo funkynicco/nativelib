@@ -29,14 +29,14 @@ namespace nl
 
             inline const_iterator& operator ++()
             {
-                assert_if_debug(m_uIndex < m_vector.m_uCount);
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 ++m_uIndex;
                 return *this;
             }
 
             inline const T& operator *() const
             {
-                assert_if_debug(m_uIndex < m_vector.m_uCount);
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 return m_vector.m_pArray[m_uIndex];
             }
 
@@ -68,20 +68,20 @@ namespace nl
 
             inline iterator& operator ++()
             {
-                assert_if_debug(m_uIndex < m_vector.m_uCount);
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 ++m_uIndex;
                 return *this;
             }
 
             inline T& operator *()
             {
-                assert_if_debug(m_uIndex < m_vector.m_uCount);
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 return m_vector.m_pArray[m_uIndex];
             }
 
             inline const T& operator *() const
             {
-                assert_if_debug(m_uIndex < m_vector.m_uCount);
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 return m_vector.m_pArray[m_uIndex];
             }
 

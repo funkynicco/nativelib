@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="nl::BasicString&lt;*&gt;">
+    <DisplayString>"{m_pString,sb}"</DisplayString>
+    <!-- sb means don't show the pointer -->
+    <Expand>
+      <Item Name="Length">m_nLength</Item>
+      <Item Name="Capacity">m_nCapacity</Item>
+    </Expand>
+  </Type>
+  
+  <Type Name="nl::Vector&lt;*,*&gt;">
+    <DisplayString>{{Count = {m_uCount}}}</DisplayString>
+    <Expand>
+      <Item Name="Count">m_uCount</Item>
+      <Item Name="Capacity">m_uSize</Item>
+      <ArrayItems>
+        <Size>m_uCount</Size>
+        <ValuePointer>m_pArray</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="nl::Scoped&lt;*&gt;">
+    <DisplayString>{m_obj}</DisplayString>
+    <Expand>
+      <Item Name="Object">m_obj</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

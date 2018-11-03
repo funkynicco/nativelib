@@ -367,6 +367,11 @@
     <None Include="..\include\NativeLib\Math\Vector.inl" />
     <None Include="..\include\NativeLib\RAII.inl" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\NativeLib.natvis">
+      <SubType>Designer</SubType>
+    </Natvis>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

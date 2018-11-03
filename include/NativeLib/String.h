@@ -123,6 +123,7 @@ namespace nl
 		{
 			size_t len = strlen(str);
 			Set(str, len);
+            return *this;
 		}
 
 		inline BasicString& operator =(const BasicString& str)
@@ -500,7 +501,7 @@ namespace nl
 		}
 #endif
 
-#if defined(_STD) and defined(_STRING_)
+#if defined(_STD) && defined(_STRING_)
         AppendTemplateValue_Impl_For(const std::string&)
         {
             str.Append(value.c_str(), value.length());
