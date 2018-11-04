@@ -23,8 +23,14 @@
     <ClInclude Include="..\include\NativeLib\Math\Vector.h">
       <Filter>lib\Math</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\NativeLib\RAII.h">
-      <Filter>lib</Filter>
+    <ClInclude Include="..\include\NativeLib\RAII\Scoped.h">
+      <Filter>lib\RAII</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NativeLib\RAII\Shared.h">
+      <Filter>lib\RAII</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NativeLib\RAII\Methods.h">
+      <Filter>lib\RAII</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -50,13 +56,16 @@
     <Filter Include="lib\Math">
       <UniqueIdentifier>{47ed086d-8967-451b-96c7-1f2057fd8717}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lib\RAII">
+      <UniqueIdentifier>{e2854937-6b06-46df-89c9-500cbfd91e58}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\include\NativeLib\Math\Vector.inl">
       <Filter>lib\Math</Filter>
     </None>
-    <None Include="..\include\NativeLib\RAII.inl">
-      <Filter>lib</Filter>
-    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\NativeLib.natvis" />
   </ItemGroup>
 </Project>

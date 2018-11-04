@@ -342,7 +342,9 @@
     <ClInclude Include="..\include\NativeLib\Definitions.h" />
     <ClInclude Include="..\include\NativeLib\Exceptions.h" />
     <ClInclude Include="..\include\NativeLib\Math\Vector.h" />
-    <ClInclude Include="..\include\NativeLib\RAII.h" />
+    <ClInclude Include="..\include\NativeLib\RAII\Methods.h" />
+    <ClInclude Include="..\include\NativeLib\RAII\Scoped.h" />
+    <ClInclude Include="..\include\NativeLib\RAII\Shared.h" />
     <ClInclude Include="..\include\NativeLib\String.h" />
     <ClInclude Include="..\include\NativeLib\Vector.h" />
     <ClInclude Include="..\src\StdAfx.h" />
@@ -365,7 +367,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\include\NativeLib\Math\Vector.inl" />
-    <None Include="..\include\NativeLib\RAII.inl" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\NativeLib.natvis">
