@@ -268,7 +268,7 @@ namespace nl
             Expand(uNewSize - m_uSize);
         }
 
-        inline bool Add(const T& value)
+        inline void Add(const T& value)
         {
             if (m_uCount == m_uSize)
                 Expand(1);
@@ -277,11 +277,9 @@ namespace nl
                 m_pArray[m_uCount++] = value;
             else
                 new(&m_pArray[m_uCount++]) T(value);
-
-            return true;
         }
 
-        inline bool Add(T&& value)
+        inline void Add(T&& value)
         {
             if (m_uCount == m_uSize)
                 Expand(1);
@@ -290,8 +288,6 @@ namespace nl
                 m_pArray[m_uCount++] = std::move(value);
             else
                 new(&m_pArray[m_uCount++]) T(std::move(value));
-
-            return true;
         }
 
         inline void Delete(size_t uIndex)

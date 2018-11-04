@@ -22,9 +22,17 @@
   </Type>
 
   <Type Name="nl::Scoped&lt;*&gt;">
-    <DisplayString>{m_obj}</DisplayString>
+    <DisplayString>{*m_obj}</DisplayString>
     <Expand>
-      <Item Name="Object">m_obj</Item>
+      <Item Name="Object">*m_obj</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="nl::Shared&lt;*&gt;">
+    <DisplayString>{*m_shared->Object}</DisplayString>
+    <Expand>
+      <Item Name="Object">*m_shared->Object</Item>
+      <Item Name="References">m_shared->References</Item>
     </Expand>
   </Type>
 </AutoVisualizer>
