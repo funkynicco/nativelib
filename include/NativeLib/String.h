@@ -296,7 +296,7 @@ namespace nl
 		inline size_t IndexOf(const void* str, size_t len, size_t start) const
 		{
 			nl_assert_if_debug(start <= m_nLength);
-			if (len > m_nLength)
+			if (start + len > m_nLength)
 				return npos;
 
 			size_t i;
