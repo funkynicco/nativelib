@@ -63,6 +63,7 @@ workspace "nativelib"
         files {
             "src/**.cpp",
             "src/**.h",
+            "src/**.inl",
             "include/NativeLib/**.h",
             "include/NativeLib/**.inl",
             "*.py",

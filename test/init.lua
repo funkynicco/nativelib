@@ -5,6 +5,7 @@ project "nativelib.test"
     files {
         "src/**.cpp",
         "src/**.h",
+        "src/**.inl",
         "*.lua"
     }
 

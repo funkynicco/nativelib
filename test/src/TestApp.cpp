@@ -1,14 +1,16 @@
 #include <iostream>
 #include <Windows.h>
 
-#include <NativeLib/String.h>
+#include <NativeLib/Json.h>
 
 int main(int, char**)
 {
-    nl::String<> test;
-    test = "hello world\n";
+    auto obj = nl::CreateJsonObject<nl::JsonObject>();
+    obj->SetString("hello", "world");
 
-    printf(test.c_str());
+    std::string json;
+    nl::GenerateJsonString(json, obj);
 
+    printf("%s\n", json.c_str());
     return 0;
 }
