@@ -2,6 +2,9 @@
 
 .vs/
 lib/
-win32/build/
+build/
 
 *.user
+*.vcxproj
+*.sln
+*.filters
