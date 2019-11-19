@@ -4,7 +4,7 @@
 
 #include "StdAfx.h"
 
-#include <NativeLib/Json/Json.h>
+#include <NativeLib/Json.h>
 
 #include "JsonInline.inl"
 
@@ -26,7 +26,7 @@ namespace nl
 
         if (json[i] != '{')
         {
-            sprintf_s(error_str, __FUNCTION__ " - Json at offset %ld is not an array", i);
+            sprintf_s(error_str, __FUNCTION__ " - Json at offset %lu is not an array", (unsigned int)i);
             parse_errors.push_back(error_str);
             return false;
         }
@@ -37,7 +37,7 @@ namespace nl
             Json_SkipWhitespace(json, i);
             if (i >= json.length())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
                 parse_errors.push_back(error_str);
                 return false;
             }
@@ -60,14 +60,14 @@ namespace nl
             Json_SkipWhitespace(json, i);
             if (i >= json.length())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
                 parse_errors.push_back(error_str);
                 return false;
             }
 
             if (json[i++] != ':')
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
                 parse_errors.push_back(error_str);
                 return false;
             }
@@ -75,7 +75,7 @@ namespace nl
             Json_SkipWhitespace(json, i);
             if (i >= json.length())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
                 parse_errors.push_back(error_str);
                 return false;
             }
@@ -87,9 +87,14 @@ namespace nl
             m_members.insert(std::pair<std::string, JsonBase*>(name, value));
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+        sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
         parse_errors.push_back(error_str);
         return false;
+    }
+
+    void JsonObject::SetNull(const char* pszName)
+    {
+        SetBase(pszName, new JsonNull);
     }
 
     void JsonObject::SetObject(const char* pszName, JsonBase* obj)

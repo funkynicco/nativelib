@@ -10,11 +10,13 @@
 #include <vector>
 #include <string>
 #include <type_traits>
+#include <memory>
 
 namespace nl
 {
     enum class JsonType
     {
+        Null,
         String,
         Number,
         Object,
@@ -22,6 +24,7 @@ namespace nl
         Boolean
     };
 
+    class JsonNull;
     class JsonObject;
     class JsonArray;
     class JsonBoolean;
@@ -70,6 +73,25 @@ namespace nl
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
 
+    class JsonNull : public JsonBase
+    {
+    public:
+        JsonNull() :
+            JsonBase(JsonType::Null)
+        {
+        }
+
+        virtual ~JsonNull() {}
+
+        //DeclarePool(JsonNull);
+
+        static constexpr bool IsOfType(JsonType type) { return type == JsonType::Null; }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////
+
     class JsonObject : public JsonBase
     {
     public:
@@ -109,13 +131,14 @@ namespace nl
         }
 
         template <typename T>
-        inline const T* GetMember(const char* name) const { return static_cast<T*>(GetMember(name)); }
+        inline const T* GetMember(const char* name) const { return static_cast<const T*>(GetMember(name)); }
 
         inline size_t GetCount() const { return m_members.size(); }
         inline std::unordered_map<std::string, JsonBase*>& GetMembers() { return m_members; }
         inline const std::unordered_map<std::string, JsonBase*>& GetMembers() const { return m_members; }
 
-        void		 SetObject(const char* pszName, JsonBase* obj);
+        void            SetNull(const char* pszName);
+        void            SetObject(const char* pszName, JsonBase* obj);
         JsonObject* SetObject(const char* pszName);
         JsonArray* SetArray(const char* pszName);
         JsonBoolean* SetBoolean(const char* pszName, bool value);
@@ -132,7 +155,7 @@ namespace nl
 
     protected:
         friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
-        friend JsonBase* ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+        friend std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
 
         bool Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
 
@@ -181,6 +204,7 @@ namespace nl
         template <typename T>
         inline const T* GetItem(size_t index) const { return static_cast<T*>(m_items[index]); }
 
+        void AddNull();
         void AddObject(JsonBase* obj);
         JsonObject* AddObject();
         JsonArray* AddArray();
@@ -198,7 +222,7 @@ namespace nl
 
     protected:
         friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
-        friend JsonBase* ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+        friend std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
 
         bool Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
 
@@ -353,35 +377,41 @@ namespace nl
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    JsonBase* ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+    std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
 
     template <typename T>
-    inline T* ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
+    inline std::unique_ptr<T> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
     {
-        return static_cast<T*>(ParseJson(pszJson, parse_errors));
+        auto ptr = ParseJson(pszJson, parse_errors);
+        if (!ptr)
+            return nullptr;
+
+        return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
     }
 
     bool GenerateJsonString(std::string& output, const JsonBase* pJson);
-    JsonBase* CreateJsonObject(JsonType type);
+    std::unique_ptr<JsonBase> CreateJsonObject(JsonType type);
 
     template <typename T>
-    inline T* CreateJsonObject()
+    inline std::unique_ptr<T> CreateJsonObject()
     {
-        if constexpr (std::is_same_v<T, JsonObject>)
-            return (T*)CreateJsonObject(JsonType::Object);
+        std::unique_ptr<JsonBase> ptr;
 
-        if constexpr (std::is_same_v<T, JsonArray>)
-            return (T*)CreateJsonObject(JsonType::Array);
+        if constexpr (std::is_same_v<T, JsonNull>)
+            ptr = CreateJsonObject(JsonType::Null);
+        else if constexpr (std::is_same_v<T, JsonObject>)
+            ptr = CreateJsonObject(JsonType::Object);
+        else if constexpr (std::is_same_v<T, JsonArray>)
+            ptr = CreateJsonObject(JsonType::Array);
+        else if constexpr (std::is_same_v<T, JsonString>)
+            ptr = CreateJsonObject(JsonType::String);
+        else if constexpr (std::is_same_v<T, JsonNumber>)
+            ptr = CreateJsonObject(JsonType::Number);
+        else if constexpr (std::is_same_v<T, JsonBoolean>)
+            ptr = CreateJsonObject(JsonType::Boolean);
+        else
+            throw UnsupportedJsonTypeException();
 
-        if constexpr (std::is_same_v<T, JsonString>)
-            return (T*)CreateJsonObject(JsonType::String);
-
-        if constexpr (std::is_same_v<T, JsonNumber>)
-            return (T*)CreateJsonObject(JsonType::Number);
-
-        if constexpr (std::is_same_v<T, JsonBoolean>)
-            return (T*)CreateJsonObject(JsonType::Boolean);
-
-        throw UnsupportedJsonTypeException();
+        return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
     }
 }

@@ -4,13 +4,13 @@
 
 #include "StdAfx.h"
 
-#include <NativeLib/Json/Json.h>
+#include <NativeLib/Json.h>
 
 #include "JsonInline.inl"
 
 namespace nl
 {
-    JsonBase* ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
+    std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
     {
         std::string json = pszJson;
 
@@ -25,25 +25,19 @@ namespace nl
             return NULL;
         }
 
-        JsonBase* obj = NULL;
+        std::unique_ptr<JsonBase> obj;
 
         if (json[i] == '{')
         {
-            obj = new JsonObject();
-            if (!static_cast<JsonObject*>(obj)->Read(json, i, parse_errors))
-            {
-                delete obj;
-                return NULL;
-            }
+            obj = std::unique_ptr<JsonBase>(new JsonObject);
+            if (!static_cast<JsonObject*>(obj.get())->Read(json, i, parse_errors))
+                return nullptr;
         }
         else if (json[i] == '[')
         {
-            obj = new JsonArray();
-            if (!static_cast<JsonArray*>(obj)->Read(json, i, parse_errors))
-            {
-                delete obj;
-                return NULL;
-            }
+            obj = std::unique_ptr<JsonBase>(new JsonArray);
+            if (!static_cast<JsonArray*>(obj.get())->Read(json, i, parse_errors))
+                return nullptr;
         }
 
         return obj;
@@ -99,9 +93,9 @@ namespace nl
 
             auto num = static_cast<const JsonNumber*>(pJson);
             if (num->IsDouble())
-                sprintf(buffer, "%lf", num->GetDouble());
+                sprintf_s(buffer, "%lf", num->GetDouble());
             else
-                sprintf(buffer, "%I64d", num->GetValue());
+                sprintf_s(buffer, "%I64d", num->GetValue());
 
             output.append(buffer);
         }
@@ -143,6 +137,10 @@ namespace nl
 
             output.push_back('}');
         }
+        else if (pJson->GetType() == JsonType::Null)
+        {
+            output.append("null");
+        }
         else
             return false;
 
@@ -156,20 +154,22 @@ namespace nl
         return JsonGenerateProcessBase(output, pJson); // recursive
     }
 
-    JsonBase* CreateJsonObject(JsonType type)
+    std::unique_ptr<JsonBase> CreateJsonObject(JsonType type)
     {
         switch (type)
         {
+        case JsonType::Null:
+            return std::unique_ptr<JsonBase>(new JsonNull);
         case JsonType::Object:
-            return new JsonObject;
+            return std::unique_ptr<JsonBase>(new JsonObject);
         case JsonType::Array:
-            return new JsonArray;
+            return std::unique_ptr<JsonBase>(new JsonArray);
         case JsonType::String:
-            return new JsonString;
+            return std::unique_ptr<JsonBase>(new JsonString);
         case JsonType::Number:
-            return new JsonNumber;
+            return std::unique_ptr<JsonBase>(new JsonNumber);
         case JsonType::Boolean:
-            return new JsonBoolean;
+            return std::unique_ptr<JsonBase>(new JsonBoolean);
         }
 
         throw UnsupportedJsonTypeException();

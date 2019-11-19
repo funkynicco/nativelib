@@ -135,7 +135,7 @@ namespace nl
         char error_str[256];
         if (json[i] != '"')
         {
-            sprintf_s(error_str, __FUNCTION__ " - Json at offset %ld is not a string", i);
+            sprintf_s(error_str, __FUNCTION__ " - Json at offset %lu is not a string", (unsigned int)i);
             parse_errors.push_back(error_str);
             return false;
         }
@@ -148,7 +148,7 @@ namespace nl
             {
                 if (i + 1 >= json.length())
                 {
-                    sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+                    sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
                     parse_errors.push_back(error_str);
                     return false;
                 }
@@ -178,7 +178,7 @@ namespace nl
                     break;
                 case 'u':
                 {
-                    sprintf_s(error_str, __FUNCTION__ " - \\u0000 type characters are not supported at offset %ld", i);
+                    sprintf_s(error_str, __FUNCTION__ " - \\u0000 type characters are not supported at offset %lu", (unsigned int)i);
                     parse_errors.push_back(error_str);
                     return false;
                 }
@@ -195,7 +195,7 @@ namespace nl
             sb.push_back(json[i++]);
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
+        sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
         parse_errors.push_back(error_str);
         return false;
     }
@@ -229,7 +229,7 @@ namespace nl
             if (Json_ReadDouble(&value2, json, i))
                 return new JsonNumber(value2);
 
-            sprintf_s(error_str, __FUNCTION__ " - Value at offset %ld is neither number or double.", temp_i);
+            sprintf_s(error_str, __FUNCTION__ " - Value at offset %lu is neither number or double.", (unsigned int)temp_i);
             parse_errors.push_back(error_str);
             return NULL;
         }
@@ -276,10 +276,10 @@ namespace nl
             _memicmp(json.c_str() + i, "null", 4) == 0)
         {
             i += 4;
-            return NULL;
+            return new JsonNull;
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - No suitable json value found at offset %ld", i);
+        sprintf_s(error_str, __FUNCTION__ " - No suitable json value found at offset %lu", (unsigned int)i);
         parse_errors.push_back(error_str);
         return NULL;
     }

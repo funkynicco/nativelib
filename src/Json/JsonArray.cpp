@@ -4,7 +4,7 @@
 
 #include "StdAfx.h"
 
-#include <NativeLib/Json/Json.h>
+#include <NativeLib/Json.h>
 
 #include "JsonInline.inl"
 
@@ -63,6 +63,11 @@ namespace nl
         sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
         parse_errors.push_back(error_str);
         return false;
+    }
+
+    void JsonArray::AddNull()
+    {
+        AddBase(new JsonNull);
     }
 
     void JsonArray::AddObject(JsonBase* obj)

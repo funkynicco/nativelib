@@ -4,6 +4,6 @@
 
 #include "StdAfx.h"
 
-#include <NativeLib/Json/Json.h>
+#include <NativeLib/Json.h>
 
 //DefinePool(JsonString, 16);
