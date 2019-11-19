@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Windows.h>
+#include <NativeLib/Platform/Windows.h>
 
 class Exception
 {

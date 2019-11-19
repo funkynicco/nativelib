@@ -9,7 +9,7 @@
 #include <cstdio>
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <NativeLib/Platform/Windows.h>
 #endif
 
 // mutable string (it changes itself; for performance benefit in C++)

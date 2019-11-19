@@ -1,8 +1,8 @@
 #include "StdAfx.h"
+
 #include <NativeLib/Exceptions.h>
 
-#include <DbgHelp.h>
-#pragma comment(lib, "dbghelp.lib")
+#include <NativeLib/Platform/DbgHelpWin.h>
 
 SRWLOCK Exception::m_lock = SRWLOCK_INIT;
 bool Exception::m_initializedSymbol = false;

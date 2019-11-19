@@ -60,6 +60,9 @@ workspace "nativelib"
 
     project "nativelib"
 
+        pchheader "StdAfx.h"
+        pchsource "src/StdAfx.cpp"
+
         files {
             "src/**.cpp",
             "src/**.h",
