@@ -36,8 +36,10 @@ namespace nl
 
         Server::Server()
         {
+            m_pfnEventHandler = nullptr;
             m_hIocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
             m_lUserData = 0;
+            m_lNextClientId = 0;
         }
 
         Server::~Server()
@@ -46,6 +48,8 @@ namespace nl
 
         void Server::ConnectNewClient(const wchar_t* pipeName)
         {
+            LONG lClientId = InterlockedIncrement(&m_lNextClientId);
+
             auto hPipe = CreateNamedPipe(
                 pipeName,
                 PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
@@ -58,7 +62,7 @@ namespace nl
             CreateIoCompletionPort(hPipe, m_hIocp, 0, 0);
 
             auto lpOverlapped = AllocateOverlapped(IOEVENT_CONNECT);
-            lpOverlapped->Client = new PipeClient(hPipe);
+            lpOverlapped->Client = new PipeClient(hPipe, lClientId);
 
             if (!ConnectNamedPipe(hPipe, &lpOverlapped->Overlapped) &&
                 GetLastError() != ERROR_PIPE_CONNECTED &&
@@ -89,8 +93,12 @@ namespace nl
                     if (dwCode == ERROR_BROKEN_PIPE)
                     {
                         //DBG(__FUNCTION__ L" - %p disconnected\n", lpOverlapped->Client->GetPipe());
+                        auto id = lpOverlapped->Client->GetId();
                         lpOverlapped->Client->Release();
                         FreeOverlapped(lpOverlapped);
+
+                        if (m_pfnEventHandler)
+                            m_pfnEventHandler(this, Events::ClientDisconnected, id);
                     }
                     else
                     {
@@ -111,11 +119,15 @@ namespace nl
                 if (lpOverlapped->Event == IOEVENT_CONNECT)
                 {
                     HANDLE hPipe = lpOverlapped->Client->GetPipe();
+                    auto id = lpOverlapped->Client->GetId();
                     //DBG(__FUNCTION__ L" - %p connected\n", hPipe);
 
                     lpOverlapped->Event = IOEVENT_READ;
                     ReadFile(hPipe, lpOverlapped->Buffer, sizeof(lpOverlapped->Buffer), nullptr, &lpOverlapped->Overlapped);
                     ConnectNewClient(pipeName);
+
+                    if (m_pfnEventHandler)
+                        m_pfnEventHandler(this, Events::ClientConnected, id);
                 }
                 else if (lpOverlapped->Event == IOEVENT_READ)
                 {
@@ -182,7 +194,7 @@ namespace nl
 
             try
             {
-                it->second(this, requestJson.get(), responseJson.get());
+                it->second(this, client->GetId(), requestJson.get(), responseJson.get());
             }
             catch (Exception & ex)
             {

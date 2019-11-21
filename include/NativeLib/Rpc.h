@@ -13,7 +13,14 @@ namespace nl
     {
         DeclarePassthroughException(RpcException);
 
-        typedef void(*pfn)(class Server* rpc, const nl::JsonObject* request, nl::JsonObject* response);
+        enum class Events
+        {
+            ClientConnected,
+            ClientDisconnected
+        };
+
+        typedef void(*pfnEventHandler)(class Server* rpc, Events event, LONG_PTR data);
+        typedef void(*pfn)(class Server* rpc, LONG client_id, const nl::JsonObject* request, nl::JsonObject* response);
 
         class Server
         {
@@ -21,6 +28,11 @@ namespace nl
             Server();
             ~Server();
             void Run(const wchar_t* pipeName);
+
+            void BindEventHandler(pfnEventHandler pfn)
+            {
+                m_pfnEventHandler = pfn;
+            }
 
             void Bind(const std::string& name, pfn procedure)
             {
@@ -36,9 +48,12 @@ namespace nl
             void SendJson(class PipeClient* client, int requestId, const std::unique_ptr<nl::JsonObject>& json);
 
         private:
+            pfnEventHandler m_pfnEventHandler;
             std::unordered_map<std::string, pfn> m_procedures;
             HANDLE m_hIocp;
             LONG_PTR m_lUserData;
+
+            LONG m_lNextClientId;
 
             void ConnectNewClient(const wchar_t* pipeName);
         };

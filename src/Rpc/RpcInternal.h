@@ -15,9 +15,10 @@ namespace nl
         class PipeClient
         {
         public:
-            PipeClient(HANDLE hPipe) :
+            PipeClient(HANDLE hPipe, LONG lClientId) :
                 m_hPipe(hPipe),
-                m_lReferences(1)
+                m_lReferences(1),
+                m_lClientId(lClientId)
             {
             }
 
@@ -39,11 +40,13 @@ namespace nl
 
             HANDLE GetPipe() const { return m_hPipe; }
             DataBuffer& GetBuffer() { return m_buffer; }
+            LONG GetId() const { return m_lClientId; }
 
         private:
             LONG m_lReferences;
             HANDLE m_hPipe;
             DataBuffer m_buffer;
+            LONG m_lClientId;
         };
 
         struct OverlappedEx
