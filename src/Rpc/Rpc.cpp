@@ -184,9 +184,16 @@ namespace nl
             {
                 it->second(this, requestJson.get(), responseJson.get());
             }
-            catch (std::exception & ex)
+            catch (Exception & ex)
             {
-                SendError(client, requestId, ex.what());
+                int msg_len = (int)wcslen(ex.GetMessage());
+                int required_len = WideCharToMultiByte(CP_UTF8, 0, ex.GetMessage(), msg_len, nullptr, 0, nullptr, nullptr);
+
+                std::string result;
+                result.resize(required_len);
+                WideCharToMultiByte(CP_UTF8, 0, ex.GetMessage(), msg_len, result.data(), required_len, nullptr, nullptr);
+
+                SendError(client, requestId, result.c_str());
                 return;
             }
 
