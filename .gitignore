@@ -3,6 +3,8 @@
 .vs/
 lib/
 build/
+bin/
+obj/
 
 *.user
 *.vcxproj

@@ -4,7 +4,7 @@ namespace nl
 {
     namespace trace
     {
-        void Setup(const char* filename);
+        void Setup();
         void Terminate();
 
         __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr);
