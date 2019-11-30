@@ -14,7 +14,12 @@ int main(int, char**)
             __FILE__,
             __LINE__,
             __FUNCTION__,
-            reinterpret_cast<void*>((ULONG_PTR)i));
+            main,
+            1024);
+
+        Sleep(1000);
+
+        nl::trace::RemoveAllocation(main);
 
         Sleep(1000);
     }

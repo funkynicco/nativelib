@@ -17,7 +17,8 @@ namespace nl
         enum class CommandType
         {
             AddAllocation,
-            RemoveAllocation
+            RemoveAllocation,
+            PointerInfo
         };
 
         const char* PipeName = "\\\\.\\pipe\\nl-trace-4661A80D-CD1F-4692-9269-BCC420539E38";
@@ -53,9 +54,22 @@ namespace nl
             int LineNumber;
             char Function[64];
             ULONGLONG Pointer;
+            ULONGLONG SizeOfPointerData;
 
-            LPVOID Stack[32];
-            StackInfo StackInfo[32];
+            ULONGLONG Stack[32];
+            USHORT Frames;
+        };
+
+        struct PointerInfo
+        {
+            ULONGLONG Pointer;
+            char Function[256];
+        };
+
+        struct PointerInfoRequest
+        {
+            LONGLONG RequestId;
+            PointerInfo Info;
         };
 
         struct PipeCommand
@@ -65,7 +79,8 @@ namespace nl
             union
             {
                 FunctionData Data;
-                void* Pointer;
+                ULONGLONG Pointer;
+                PointerInfoRequest PointerInfoRequest;
             };
         };
 #pragma pack(pop)
@@ -146,6 +161,13 @@ namespace nl
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 throw Win32Exception();
 
+            DWORD dwMode = PIPE_READMODE_MESSAGE;
+            if (!SetNamedPipeHandleState(g_hPipe, &dwMode, nullptr, nullptr))
+            {
+                DWORD dwCode = GetLastError();
+                int a = 0;
+            }
+
             QueryPerformanceFrequency(&g_liFrequency);
             QueryPerformanceCounter(&g_liStart);
 
@@ -181,7 +203,7 @@ namespace nl
             }
         }
 
-        __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr)
+        __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr, size_t sizeOfPtrData)
         {
             LARGE_INTEGER li;
             QueryPerformanceCounter(&li);
@@ -197,11 +219,16 @@ namespace nl
             command->Data.LineNumber = line;
             strcpy_s(command->Data.Function, function);
             command->Data.Pointer = reinterpret_cast<ULONG_PTR>(ptr);
+            command->Data.SizeOfPointerData = sizeOfPtrData;
 
-            LPVOID stack[32];
-            auto frames = g_callstackCapturing.CaptureStackBackTracePtr(1, ARRAYSIZE(stack), stack, nullptr);
+            // capture back trace
+            LPVOID aStack[ARRAYSIZE(command->Data.Stack)];
+            command->Data.Frames = g_callstackCapturing.CaptureStackBackTracePtr(1, ARRAYSIZE(aStack), aStack, nullptr);
 
-
+            for (USHORT i = 0; i < command->Data.Frames; ++i)
+            {
+                command->Data.Stack[i] = (ULONGLONG)aStack[i];
+            }
 
             WriteFile(g_hPipe, overlapped->Buffer, sizeof(PipeCommand), nullptr, &overlapped->Overlapped);
         }
@@ -213,9 +240,26 @@ namespace nl
             PipeCommand* command = reinterpret_cast<PipeCommand*>(overlapped->Buffer);
             command->Command = CommandType::RemoveAllocation;
 
-            command->Pointer = ptr;
+            command->Pointer = reinterpret_cast<ULONG_PTR>(ptr);
 
             WriteFile(g_hPipe, overlapped->Buffer, sizeof(PipeCommand), nullptr, &overlapped->Overlapped);
+        }
+
+        void ResolvePointerData(LONG_PTR ptr, PointerInfo* pi)
+        {
+            SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) * 256 * sizeof(char), 1);
+            ZeroMemory(symbol, sizeof(SYMBOL_INFO) + 256 * sizeof(char));
+            symbol->MaxNameLen = 255;
+            symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+            if (!SymFromAddr(g_callstackCapturing.hProcess, ptr, nullptr, symbol))
+            {
+                pi->Pointer = (ULONGLONG)ptr;
+                strcpy_s(pi->Function, "<Unresolved Pointer>");
+                return;
+            }
+
+            strcpy_s(pi->Function, symbol->Name);
         }
 
         DWORD WINAPI AllocationTraceThread(LPVOID)
@@ -233,12 +277,6 @@ namespace nl
                     {
                         // disconnected
                         printf("broken pipe\n");
-                    }
-                    else
-                    {
-                        //char msg[1024];
-                        //sprintf_s(msg, "unknown code %u", dwCode);
-                        //MessageBoxA(nullptr, msg, "", MB_OK);
                     }
 
                     continue;
@@ -258,7 +296,30 @@ namespace nl
                         printf("pipe destroyed\n");
                     }
                     else
+                    {
+                        // read command from client, like request for pointer info
+                        auto cmd = *(int*)overlapped->Buffer;
+                        if (cmd == 3)
+                        {
+                            // request for pointer info
+                            auto request_id = *(LONGLONG*)(overlapped->Buffer + sizeof(int));
+                            auto pointer = *(ULONGLONG*)(overlapped->Buffer + sizeof(int) + sizeof(LONGLONG));
+
+                            PipeCommand pipeCommand = {};
+                            pipeCommand.Command = CommandType::PointerInfo;
+                            pipeCommand.PointerInfoRequest.RequestId = request_id;
+
+                            ResolvePointerData((LONG_PTR)pointer, &pipeCommand.PointerInfoRequest.Info);
+                            
+                            //printf("resolve ptr %p -> %s\n", reinterpret_cast<void*>(pointer), pipeCommand.PointerInfoRequest.Info.Function);
+
+                            auto overlappedSend = AllocateOverlapped(IOEvent::Write);
+                            memcpy(overlappedSend->Buffer, &pipeCommand, sizeof(PipeCommand));
+                            WriteFile(g_hPipe, overlappedSend->Buffer, sizeof(PipeCommand), nullptr, &overlappedSend->Overlapped);
+                        }
+
                         ReadFile(g_hPipe, overlapped->Buffer, ARRAYSIZE(overlapped->Buffer), nullptr, &overlapped->Overlapped);
+                    }
                 }
                 else if (overlapped->Event == IOEvent::Write)
                 {
@@ -267,28 +328,9 @@ namespace nl
                 }
                 else
                     throw Exception("Unknown trace event");
-
-#if 0
-                SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) * 256 * sizeof(char), 1);
-                ZeroMemory(symbol, sizeof(SYMBOL_INFO) + 256 * sizeof(char));
-                symbol->MaxNameLen = 255;
-                symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
-                nl::BasicString<1024> str;
-
-                for (USHORT i = 0; i < frames; ++i)
-                {
-                    SymFromAddr(g_callstackCapturing.hProcess, reinterpret_cast<DWORD64>(stack[i]), nullptr, symbol);
-
-                    if (str.GetLength() != 0)
-                        str.Append("\n");
-
-                    str.Append(nl::BasicString<128>::Format("- [{}] {}", (const void*)symbol->Address, symbol->Name));
-                }
-#endif
-                }
+            }
 
             return 0;
-            }
         }
     }
+}
