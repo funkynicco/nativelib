@@ -4,6 +4,8 @@
 
 #include <NativeLib/Platform/DbgHelpWin.h>
 
+#define __DBG_TRACING
+
 namespace nl
 {
     namespace trace
@@ -41,6 +43,8 @@ namespace nl
 
         } g_callstackCapturing;
 
+        LONGLONG g_lNextPacketIndex = 0;
+
 #pragma pack(push, 1)
         struct StackInfo
         {
@@ -74,6 +78,7 @@ namespace nl
 
         struct PipeCommand
         {
+            LONGLONG PacketIndex;
             CommandType Command;
 
             union
@@ -162,11 +167,7 @@ namespace nl
                 throw Win32Exception();
 
             DWORD dwMode = PIPE_READMODE_MESSAGE;
-            if (!SetNamedPipeHandleState(g_hPipe, &dwMode, nullptr, nullptr))
-            {
-                DWORD dwCode = GetLastError();
-                int a = 0;
-            }
+            SetNamedPipeHandleState(g_hPipe, &dwMode, nullptr, nullptr);
 
             QueryPerformanceFrequency(&g_liFrequency);
             QueryPerformanceCounter(&g_liStart);
@@ -205,13 +206,19 @@ namespace nl
 
         __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr, size_t sizeOfPtrData)
         {
+            if (g_hPipe == INVALID_HANDLE_VALUE)
+                return;
+
             LARGE_INTEGER li;
             QueryPerformanceCounter(&li);
             double dt = double(li.QuadPart - g_liStart.QuadPart) / g_liFrequency.QuadPart;
 
             OverlappedEx* overlapped = AllocateOverlapped(IOEvent::Write);
 
+            auto packet_index = InterlockedIncrement64(&g_lNextPacketIndex);
+
             PipeCommand* command = reinterpret_cast<PipeCommand*>(overlapped->Buffer);
+            command->PacketIndex = packet_index;
             command->Command = CommandType::AddAllocation;
 
             command->Data.Time = dt;
@@ -235,6 +242,9 @@ namespace nl
 
         __declspec(noinline) void RemoveAllocation(void* ptr)
         {
+            if (g_hPipe == INVALID_HANDLE_VALUE)
+                return;
+
             OverlappedEx* overlapped = AllocateOverlapped(IOEvent::Write);
 
             PipeCommand* command = reinterpret_cast<PipeCommand*>(overlapped->Buffer);
@@ -243,6 +253,20 @@ namespace nl
             command->Pointer = reinterpret_cast<ULONG_PTR>(ptr);
 
             WriteFile(g_hPipe, overlapped->Buffer, sizeof(PipeCommand), nullptr, &overlapped->Overlapped);
+        }
+
+        size_t SnapToVirtualPage(size_t size)
+        {
+            static DWORD dwPageSize = 0;
+
+            if (dwPageSize == 0)
+            {
+                SYSTEM_INFO si;
+                GetSystemInfo(&si);
+                dwPageSize = si.dwPageSize;
+            }
+
+            return ((size + (dwPageSize - 1)) / dwPageSize) * dwPageSize;
         }
 
         void ResolvePointerData(LONG_PTR ptr, PointerInfo* pi)
@@ -276,7 +300,9 @@ namespace nl
                     if (dwCode == ERROR_BROKEN_PIPE)
                     {
                         // disconnected
+#ifdef __DBG_TRACING
                         printf("broken pipe\n");
+#endif
                     }
 
                     continue;
@@ -289,11 +315,15 @@ namespace nl
 
                 if (overlapped->Event == IOEvent::Read)
                 {
+#ifdef __DBG_TRACING
                     printf(__FUNCTION__ " - read %u bytes\n", dwBytesTransferred);
+#endif
 
                     if (dwBytesTransferred == 0)
                     {
+#ifdef __DBG_TRACING
                         printf("pipe destroyed\n");
+#endif
                     }
                     else
                     {
@@ -305,12 +335,15 @@ namespace nl
                             auto request_id = *(LONGLONG*)(overlapped->Buffer + sizeof(int));
                             auto pointer = *(ULONGLONG*)(overlapped->Buffer + sizeof(int) + sizeof(LONGLONG));
 
+                            auto packet_index = InterlockedIncrement64(&g_lNextPacketIndex);
+
                             PipeCommand pipeCommand = {};
+                            pipeCommand.PacketIndex = packet_index;
                             pipeCommand.Command = CommandType::PointerInfo;
                             pipeCommand.PointerInfoRequest.RequestId = request_id;
 
                             ResolvePointerData((LONG_PTR)pointer, &pipeCommand.PointerInfoRequest.Info);
-                            
+
                             //printf("resolve ptr %p -> %s\n", reinterpret_cast<void*>(pointer), pipeCommand.PointerInfoRequest.Info.Function);
 
                             auto overlappedSend = AllocateOverlapped(IOEvent::Write);
@@ -323,7 +356,10 @@ namespace nl
                 }
                 else if (overlapped->Event == IOEvent::Write)
                 {
+#ifdef __DBG_TRACING
                     printf(__FUNCTION__ " - wrote %u bytes\n", dwBytesTransferred);
+#endif
+
                     FreeOverlapped(overlapped);
                 }
                 else

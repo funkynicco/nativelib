@@ -15,9 +15,40 @@ namespace NativeLibAllocationTrace
 {
     public partial class MainForm : Form
     {
+        class PointerStatistics
+        {
+            public int Count { get; set; }
+
+            public long MemorySize { get; set; }
+
+            public long TotalCount { get; set; }
+
+            public void Reset()
+            {
+                Count = 0;
+                MemorySize = 0;
+                TotalCount = 0;
+            }
+        }
+
+        class PointerInfoTag
+        {
+            public long Pointer { get; }
+
+            public long SizeOfPointerData { get; }
+
+            public PointerInfoTag(long pointer, long sizeOfPointerData)
+            {
+                Pointer = pointer;
+                SizeOfPointerData = sizeOfPointerData;
+            }
+        }
+
         private readonly RpcServer _rpc = new RpcServer();
         private readonly Timer _timer;
         private readonly Dictionary<long, PointerData> _pointerDataMap = new Dictionary<long, PointerData>();
+
+        private readonly PointerStatistics _pointerStatistics = new PointerStatistics();
 
         public MainForm()
         {
@@ -27,6 +58,7 @@ namespace NativeLibAllocationTrace
 
             Resize += (sender, e) => UpdateSizing();
             UpdateSizing();
+            UpdatePointerStatistics();
 
             var lvi = new ListViewItem($"162.394");
             lvi.SubItems.Add(@"D:\Coding\CPP\MyLibs\nativelib\tool\NativeLibAllocationTrace\src\test.cpp:359");
@@ -65,44 +97,83 @@ namespace NativeLibAllocationTrace
             return pointerData;
         }
 
+        private DateTime _nextProcessMessages = DateTime.UtcNow;
+        private readonly Dictionary<long, ListViewItem> _lviMap = new Dictionary<long, ListViewItem>();
         private async Task OnRpcEventAsync(RpcEvent ev)
         {
+            var now = DateTime.UtcNow;
+            if (now >= _nextProcessMessages)
+            {
+                Application.DoEvents();
+                _nextProcessMessages = now.AddMilliseconds(1000);
+            }
+
             if (ev is ConnectedRpcEvent)
             {
                 lvTraces.Items.Clear();
+                _lviMap.Clear();
                 _pointerDataMap.Clear();
+                _pointerStatistics.Reset();
+                UpdatePointerStatistics();
             }
             else if (ev is DisconnectedRpcEvent)
             {
             }
             else if (ev is AddAllocationRpcEvent addAllocationEvent)
             {
-                var pointerData = GetPointerDataAsync(addAllocationEvent.Pointer);
+                /*var pointerData = GetPointerDataAsync(addAllocationEvent.Pointer);
                 foreach (var ptr in addAllocationEvent.Stack)
                 {
                     var info = await GetPointerDataAsync(ptr);
                     // ...
-                }
+                }*/
 
                 var lvi = new ListViewItem($"{addAllocationEvent.Time:0.000}");
-                lvi.Tag = addAllocationEvent.Pointer;
+                lvi.Tag = new PointerInfoTag(addAllocationEvent.Pointer, addAllocationEvent.SizeOfPointerData);
                 lvi.SubItems.Add($"{addAllocationEvent.Filename}:{addAllocationEvent.Line}");
                 lvi.SubItems.Add(addAllocationEvent.Function);
                 lvi.SubItems.Add($"0x{addAllocationEvent.Pointer.ToString("X8")} ({addAllocationEvent.SizeOfPointerData} B)");
                 lvTraces.Items.Add(lvi);
+
+                if (_lviMap.ContainsKey(addAllocationEvent.Pointer))
+                    throw new Exception($"Duplicated key added!!");
+
+                _lviMap.Add(addAllocationEvent.Pointer, lvi);
+
+                _pointerStatistics.Count++;
+                _pointerStatistics.MemorySize += addAllocationEvent.SizeOfPointerData;
+                _pointerStatistics.TotalCount++;
+                UpdatePointerStatistics();
             }
             else if (ev is RemoveAllocationRpcEvent removeAllocationEvent)
             {
-                for (int i = 0; i < lvTraces.Items.Count; ++i)
+                if (!_lviMap.TryGetValue(removeAllocationEvent.Pointer, out ListViewItem lvi))
+                    throw new Exception("lvi not found, ptr: 0x" + removeAllocationEvent.Pointer.ToString("x8"));
+
+                var check = lvTraces.Items.Count;
+
+                var tag = lvi.Tag as PointerInfoTag;
+                lvi.Remove();
+                _lviMap.Remove(removeAllocationEvent.Pointer);
+
+                if (lvTraces.Items.Count == check)
+                    throw new Exception($"inv1 {lvTraces.Items.Count} == {check}");
+
+                _pointerStatistics.Count--;
+                _pointerStatistics.MemorySize -= tag.SizeOfPointerData;
+
+                if (_pointerStatistics.Count != lvTraces.Items.Count)
                 {
-                    var lvi = lvTraces.Items[i];
-                    var pointer = (long)lvi.Tag;
-                    if (pointer == removeAllocationEvent.Pointer)
-                    {
-                        lvTraces.Items.RemoveAt(i);
-                        break;
-                    }
+                    throw new Exception($"inv2: {_pointerStatistics.Count} != {lvTraces.Items.Count}");
                 }
+
+                if (_pointerStatistics.Count == 0 &&
+                    _pointerStatistics.MemorySize != 0)
+                {
+                    throw new Exception($"inv3 memorysize: {_pointerStatistics.MemorySize}");
+                }
+
+                UpdatePointerStatistics();
             }
         }
 
@@ -127,6 +198,13 @@ namespace NativeLibAllocationTrace
             lvTraces.Columns[1].Width = (int)(width * 0.5);
             lvTraces.Columns[2].Width = (int)(width * 0.2);
             lvTraces.Columns[3].Width = (int)(width * 0.2);
+        }
+
+        private void UpdatePointerStatistics()
+        {
+            tslPointerCount.Text = $"{_pointerStatistics.Count} pointers";
+            tslMemorySize.Text = $"{_pointerStatistics.MemorySize} B";
+            tslTotalAllocations.Text = $"{_pointerStatistics.TotalCount} total allocations";
         }
     }
 }

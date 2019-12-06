@@ -55,7 +55,7 @@ namespace NativeLibAllocationTrace
             ev.SizeOfPointerData = br.ReadInt64();
 
             var stack = new long[32];
-            for(int i = 0; i < stack.Length; ++i)
+            for (int i = 0; i < stack.Length; ++i)
             {
                 stack[i] = br.ReadInt64();
             }
@@ -152,6 +152,8 @@ namespace NativeLibAllocationTrace
         private readonly ReaderWriterLockSlim _requestsLock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
 
         public event DispatchEventDelegate OnEvent;
+
+        private long _nextPacketIndex = 0;
 
         public RpcServer()
         {
@@ -333,6 +335,15 @@ namespace NativeLibAllocationTrace
             using (var ms = new MemoryStream(_readBuffer, 0, count, false))
             using (var br = new BinaryReader(ms, Encoding.UTF8, true))
             {
+                var expectedNextPacketIndex = Interlocked.Increment(ref _nextPacketIndex);
+
+                var packet_index = br.ReadInt64();
+                if (packet_index != expectedNextPacketIndex)
+                {
+                    Debug.WriteLine(Util.ToHex(_readBuffer, 0, count));
+                    throw new Exception($"Expected packet index wrong: {packet_index} != {expectedNextPacketIndex}");
+                }
+
                 var command = br.ReadInt32();
                 if (command == 0) // add allocation
                 {

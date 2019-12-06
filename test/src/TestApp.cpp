@@ -8,20 +8,29 @@ int main(int, char**)
 {
     nl::trace::Setup();
 
-    for (int i = 1; i < 100; ++i)
+    const int PointerCount = 5000;
+
+    for (;;)
     {
-        nl::trace::AddAllocation(
-            __FILE__,
-            __LINE__,
-            __FUNCTION__,
-            main,
-            1024);
+        for (int i = 1; i <= PointerCount; ++i)
+        {
+            nl::trace::AddAllocation(
+                __FILE__,
+                __LINE__,
+                __FUNCTION__,
+                reinterpret_cast<void*>((LONG_PTR)i),
+                1024);
 
-        Sleep(1000);
+            Sleep(0);
+        }
 
-        nl::trace::RemoveAllocation(main);
+        for (int i = 1; i <= PointerCount; ++i)
+        {
+            nl::trace::RemoveAllocation(reinterpret_cast<void*>((LONG_PTR)i));
+            Sleep(0);
+        }
 
-        Sleep(1000);
+        Sleep(2000);
     }
 
     return 0;

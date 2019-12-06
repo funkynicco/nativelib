@@ -20,6 +20,11 @@
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader4 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.tslPointerCount = new System.Windows.Forms.ToolStripStatusLabel();
+            this.tslMemorySize = new System.Windows.Forms.ToolStripStatusLabel();
+            this.tslTotalAllocations = new System.Windows.Forms.ToolStripStatusLabel();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // lvTraces
@@ -38,7 +43,7 @@
             this.lvTraces.HideSelection = false;
             this.lvTraces.Location = new System.Drawing.Point(12, 12);
             this.lvTraces.Name = "lvTraces";
-            this.lvTraces.Size = new System.Drawing.Size(776, 426);
+            this.lvTraces.Size = new System.Drawing.Size(776, 375);
             this.lvTraces.TabIndex = 0;
             this.lvTraces.UseCompatibleStateImageBehavior = false;
             this.lvTraces.View = System.Windows.Forms.View.Details;
@@ -59,15 +64,49 @@
             // 
             this.columnHeader4.Text = "Pointer";
             // 
+            // statusStrip1
+            // 
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.tslPointerCount,
+            this.tslMemorySize,
+            this.tslTotalAllocations});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 428);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(800, 22);
+            this.statusStrip1.TabIndex = 1;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // tslPointerCount
+            // 
+            this.tslPointerCount.Name = "tslPointerCount";
+            this.tslPointerCount.Size = new System.Drawing.Size(53, 17);
+            this.tslPointerCount.Text = "ptrcount";
+            // 
+            // tslMemorySize
+            // 
+            this.tslMemorySize.Name = "tslMemorySize";
+            this.tslMemorySize.Size = new System.Drawing.Size(54, 17);
+            this.tslMemorySize.Text = "memsize";
+            // 
+            // tslTotalAllocations
+            // 
+            this.tslTotalAllocations.Name = "tslTotalAllocations";
+            this.tslTotalAllocations.Size = new System.Drawing.Size(56, 17);
+            this.tslTotalAllocations.Text = "totalalloc";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.lvTraces);
             this.Name = "MainForm";
             this.Text = "NativeLib Allocation Tracer";
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -78,6 +117,10 @@
         private System.Windows.Forms.ColumnHeader columnHeader2;
         private System.Windows.Forms.ColumnHeader columnHeader3;
         private System.Windows.Forms.ColumnHeader columnHeader4;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel tslPointerCount;
+        private System.Windows.Forms.ToolStripStatusLabel tslMemorySize;
+        private System.Windows.Forms.ToolStripStatusLabel tslTotalAllocations;
     }
 }
 
