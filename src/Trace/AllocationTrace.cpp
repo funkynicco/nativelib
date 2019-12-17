@@ -1,8 +1,9 @@
 #include "StdAfx.h"
 
 #include <NativeLib/Trace/AllocationTrace.h>
-
 #include <NativeLib/Platform/DbgHelpWin.h>
+#include <NativeLib/Helper.h>
+#include <NativeLib/Logger.h>
 
 #define __DBG_TRACING
 
@@ -90,16 +91,35 @@ namespace nl
         };
 #pragma pack(pop)
 
+        struct OverlappedBuffer
+        {
+            char Buffer[4096];
+            size_t Offset;
+            size_t Length;
+
+            OverlappedBuffer* prev;
+            OverlappedBuffer* next;
+        };
+
         struct OverlappedEx
         {
             OVERLAPPED Overlapped;
             IOEvent Event;
-            char Buffer[4096];
+            OverlappedBuffer* lpBuffer;
         };
 
         SRWLOCK g_overlappedPoolLock = SRWLOCK_INIT;
-        OverlappedEx* g_overlappedPointers[1024];
+        OverlappedEx* g_overlappedPointers[32];
         size_t g_overlappedPointersCount = 0;
+
+        void* g_overlappedBuffersMemoryBlock = nullptr;
+        OverlappedBuffer* g_overlappedBuffers[1024];
+        size_t g_overlappedBuffersCount = 0;
+
+        SRWLOCK g_sendBufferLock = SRWLOCK_INIT;
+        OverlappedBuffer* g_lpSendBufferHead = nullptr;
+        OverlappedBuffer* g_lpSendBufferTail = nullptr;
+        bool g_bIsSending = false;
 
         OverlappedEx* AllocateOverlapped(IOEvent event)
         {
@@ -129,6 +149,37 @@ namespace nl
         {
             AcquireSRWLockExclusive(&g_overlappedPoolLock);
             g_overlappedPointers[g_overlappedPointersCount++] = overlapped;
+            ReleaseSRWLockExclusive(&g_overlappedPoolLock);
+        }
+
+        OverlappedBuffer* AllocateOverlappedBuffer()
+        {
+            OverlappedBuffer* lpBuffer = nullptr;
+            for (;;)
+            {
+                AcquireSRWLockExclusive(&g_overlappedPoolLock);
+
+                if (g_overlappedBuffersCount != 0)
+                    lpBuffer = g_overlappedBuffers[--g_overlappedBuffersCount];
+
+                ReleaseSRWLockExclusive(&g_overlappedPoolLock);
+
+                if (lpBuffer)
+                    break;
+
+                Sleep(0);
+            }
+
+            lpBuffer->Offset = 0;
+            lpBuffer->Length = 0;
+
+            return lpBuffer;
+        }
+
+        void FreeOverlappedBuffer(OverlappedBuffer* lpBuffer)
+        {
+            AcquireSRWLockExclusive(&g_overlappedPoolLock);
+            g_overlappedBuffers[g_overlappedBuffersCount++] = lpBuffer;
             ReleaseSRWLockExclusive(&g_overlappedPoolLock);
         }
 
@@ -162,6 +213,13 @@ namespace nl
                 g_overlappedPointers[g_overlappedPointersCount++] = new OverlappedEx;
             }
 
+            g_overlappedBuffersMemoryBlock = VirtualAlloc(nullptr, sizeof(OverlappedBuffer) * ARRAYSIZE(g_overlappedBuffers), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            OverlappedBuffer* lpBuffersMemory = static_cast<OverlappedBuffer*>(g_overlappedBuffersMemoryBlock);
+            while (g_overlappedBuffersCount < ARRAYSIZE(g_overlappedBuffers))
+            {
+                g_overlappedBuffers[g_overlappedBuffersCount++] = lpBuffersMemory++;
+            }
+
             g_hPipe = CreateFileA(PipeName, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, nullptr);
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 throw Win32Exception();
@@ -179,7 +237,9 @@ namespace nl
             g_hThread = CreateThread(nullptr, 0, AllocationTraceThread, nullptr, 0, nullptr);
 
             auto overlappedRead = AllocateOverlapped(IOEvent::Read);
-            ReadFile(g_hPipe, overlappedRead->Buffer, ARRAYSIZE(overlappedRead->Buffer), nullptr, &overlappedRead->Overlapped);
+            overlappedRead->lpBuffer = AllocateOverlappedBuffer();
+
+            ReadFile(g_hPipe, overlappedRead->lpBuffer->Buffer, ARRAYSIZE(overlappedRead->lpBuffer->Buffer), nullptr, &overlappedRead->Overlapped);
         }
 
         void Terminate()
@@ -202,9 +262,61 @@ namespace nl
             {
                 delete g_overlappedPointers[--g_overlappedPointersCount];
             }
+
+            VirtualFree(g_overlappedBuffersMemoryBlock, 0, MEM_RELEASE);
         }
 
-        __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr, size_t sizeOfPtrData)
+        void SendBuffer(OverlappedBuffer* lpBuffer, bool prioritized = false)
+        {
+            nl_assert_if_debug(lpBuffer->Length != 0);
+
+            AcquireSRWLockExclusive(&g_sendBufferLock);
+
+            if (prioritized)
+                nl::linkedlist::AddHead(&g_lpSendBufferHead, &g_lpSendBufferTail, lpBuffer);
+            else
+                nl::linkedlist::AddTail(&g_lpSendBufferHead, &g_lpSendBufferTail, lpBuffer);
+
+            if (!g_bIsSending)
+            {
+                OverlappedEx* overlapped = AllocateOverlapped(IOEvent::Write);
+                overlapped->lpBuffer = nl::linkedlist::PopHead(&g_lpSendBufferHead, &g_lpSendBufferTail);
+
+                PipeCommand* cmd = reinterpret_cast<PipeCommand*>(overlapped->lpBuffer);
+                cmd->PacketIndex = InterlockedIncrement64(&g_lNextPacketIndex);
+
+                if (!WriteFile(g_hPipe, overlapped->lpBuffer->Buffer + overlapped->lpBuffer->Offset, (DWORD)overlapped->lpBuffer->Length, nullptr, &overlapped->Overlapped))
+                {
+                    DWORD dwCode = GetLastError();
+                    if (dwCode != ERROR_IO_PENDING)
+                    {
+                        nl::linkedlist::AddHead(&g_lpSendBufferHead, &g_lpSendBufferTail, overlapped->lpBuffer);
+                        FreeOverlapped(overlapped);
+
+#ifdef __DBG_TRACING
+                        char msg[1024];
+                        sprintf_s(msg, "err WriteFile code: %u", dwCode);
+
+                        nl::logger::GetGlobalLogger()->Log(
+                            nl::LogType::Error,
+                            __FILE__,
+                            __LINE__,
+                            __FUNCTION__,
+                            msg);
+#endif
+
+                        ReleaseSRWLockExclusive(&g_sendBufferLock);
+                        return;
+                    }
+                }
+
+                g_bIsSending = true;
+            }
+
+            ReleaseSRWLockExclusive(&g_sendBufferLock);
+        }
+
+        __declspec(noinline) void X_AddAllocation(const char* filename, int line, const char* function, void* ptr, size_t sizeOfPtrData)
         {
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 return;
@@ -213,12 +325,9 @@ namespace nl
             QueryPerformanceCounter(&li);
             double dt = double(li.QuadPart - g_liStart.QuadPart) / g_liFrequency.QuadPart;
 
-            OverlappedEx* overlapped = AllocateOverlapped(IOEvent::Write);
+            auto lpBuffer = AllocateOverlappedBuffer();
 
-            auto packet_index = InterlockedIncrement64(&g_lNextPacketIndex);
-
-            PipeCommand* command = reinterpret_cast<PipeCommand*>(overlapped->Buffer);
-            command->PacketIndex = packet_index;
+            PipeCommand* command = reinterpret_cast<PipeCommand*>(lpBuffer->Buffer);
             command->Command = CommandType::AddAllocation;
 
             command->Data.Time = dt;
@@ -237,22 +346,24 @@ namespace nl
                 command->Data.Stack[i] = (ULONGLONG)aStack[i];
             }
 
-            WriteFile(g_hPipe, overlapped->Buffer, sizeof(PipeCommand), nullptr, &overlapped->Overlapped);
+            lpBuffer->Length = sizeof(PipeCommand);
+            SendBuffer(lpBuffer);
         }
 
-        __declspec(noinline) void RemoveAllocation(void* ptr)
+        __declspec(noinline) void X_RemoveAllocation(void* ptr)
         {
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 return;
 
-            OverlappedEx* overlapped = AllocateOverlapped(IOEvent::Write);
+            auto lpBuffer = AllocateOverlappedBuffer();
 
-            PipeCommand* command = reinterpret_cast<PipeCommand*>(overlapped->Buffer);
+            PipeCommand* command = reinterpret_cast<PipeCommand*>(lpBuffer->Buffer);
             command->Command = CommandType::RemoveAllocation;
 
             command->Pointer = reinterpret_cast<ULONG_PTR>(ptr);
 
-            WriteFile(g_hPipe, overlapped->Buffer, sizeof(PipeCommand), nullptr, &overlapped->Overlapped);
+            lpBuffer->Length = sizeof(PipeCommand);
+            SendBuffer(lpBuffer);
         }
 
         size_t SnapToVirtualPage(size_t size)
@@ -301,7 +412,26 @@ namespace nl
                     {
                         // disconnected
 #ifdef __DBG_TRACING
-                        printf("broken pipe\n");
+                        nl::logger::GetGlobalLogger()->Log(
+                            nl::LogType::Warn,
+                            __FILE__,
+                            __LINE__,
+                            __FUNCTION__,
+                            "Broken pipe");
+#endif
+                    }
+                    else
+                    {
+#ifdef __DBG_TRACING
+                        char msg[1024];
+                        sprintf_s(msg, "GetQueuedCompletionStatus error: %u", dwCode);
+
+                        nl::logger::GetGlobalLogger()->Log(
+                            nl::LogType::Error,
+                            __FILE__,
+                            __LINE__,
+                            __FUNCTION__,
+                            msg);
 #endif
                     }
 
@@ -315,52 +445,142 @@ namespace nl
 
                 if (overlapped->Event == IOEvent::Read)
                 {
-#ifdef __DBG_TRACING
-                    printf(__FUNCTION__ " - read %u bytes\n", dwBytesTransferred);
-#endif
-
                     if (dwBytesTransferred == 0)
                     {
 #ifdef __DBG_TRACING
-                        printf("pipe destroyed\n");
+                        nl::logger::GetGlobalLogger()->Log(
+                            nl::LogType::Debug,
+                            __FILE__,
+                            __LINE__,
+                            __FUNCTION__,
+                            "Pipe destroyed");
 #endif
                     }
                     else
                     {
                         // read command from client, like request for pointer info
-                        auto cmd = *(int*)overlapped->Buffer;
+                        auto cmd = *(int*)overlapped->lpBuffer->Buffer;
                         if (cmd == 3)
                         {
                             // request for pointer info
-                            auto request_id = *(LONGLONG*)(overlapped->Buffer + sizeof(int));
-                            auto pointer = *(ULONGLONG*)(overlapped->Buffer + sizeof(int) + sizeof(LONGLONG));
+                            auto request_id = *(LONGLONG*)(overlapped->lpBuffer->Buffer + sizeof(int));
+                            auto pointer = *(ULONGLONG*)(overlapped->lpBuffer->Buffer + sizeof(int) + sizeof(LONGLONG));
 
-                            auto packet_index = InterlockedIncrement64(&g_lNextPacketIndex);
+                            auto lpBuffer = AllocateOverlappedBuffer();
+                            PipeCommand* pipeCommand = reinterpret_cast<PipeCommand*>(lpBuffer->Buffer);
+                            pipeCommand->Command = CommandType::PointerInfo;
+                            pipeCommand->PointerInfoRequest.RequestId = request_id;
 
-                            PipeCommand pipeCommand = {};
-                            pipeCommand.PacketIndex = packet_index;
-                            pipeCommand.Command = CommandType::PointerInfo;
-                            pipeCommand.PointerInfoRequest.RequestId = request_id;
-
-                            ResolvePointerData((LONG_PTR)pointer, &pipeCommand.PointerInfoRequest.Info);
+                            ResolvePointerData((LONG_PTR)pointer, &pipeCommand->PointerInfoRequest.Info);
 
                             //printf("resolve ptr %p -> %s\n", reinterpret_cast<void*>(pointer), pipeCommand.PointerInfoRequest.Info.Function);
 
-                            auto overlappedSend = AllocateOverlapped(IOEvent::Write);
-                            memcpy(overlappedSend->Buffer, &pipeCommand, sizeof(PipeCommand));
-                            WriteFile(g_hPipe, overlappedSend->Buffer, sizeof(PipeCommand), nullptr, &overlappedSend->Overlapped);
+                            lpBuffer->Length = sizeof(PipeCommand);
+                            SendBuffer(lpBuffer, true);
                         }
 
-                        ReadFile(g_hPipe, overlapped->Buffer, ARRAYSIZE(overlapped->Buffer), nullptr, &overlapped->Overlapped);
+                        if (!ReadFile(g_hPipe, overlapped->lpBuffer->Buffer, ARRAYSIZE(overlapped->lpBuffer->Buffer), nullptr, &overlapped->Overlapped))
+                        {
+                            DWORD dwCode = GetLastError();
+                            if (dwCode != ERROR_IO_PENDING)
+                            {
+#ifdef __DBG_TRACING
+                                char msg[1024];
+                                sprintf_s(msg, "err ReadFile code: %u", dwCode);
+
+                                nl::logger::GetGlobalLogger()->Log(
+                                    nl::LogType::Error,
+                                    __FILE__,
+                                    __LINE__,
+                                    __FUNCTION__,
+                                    msg);
+#endif
+                            }
+                        }
                     }
                 }
                 else if (overlapped->Event == IOEvent::Write)
                 {
+                    overlapped->lpBuffer->Offset += dwBytesTransferred;
+                    overlapped->lpBuffer->Length -= dwBytesTransferred;
+                    if (overlapped->lpBuffer->Length != 0)
+                    {
+                        // need to send more..
 #ifdef __DBG_TRACING
-                    printf(__FUNCTION__ " - wrote %u bytes\n", dwBytesTransferred);
+                        char msg[1024];
+
+                        sprintf_s(msg, "INCOMPLETE - %u remaining\n", (DWORD)overlapped->lpBuffer->Length);
+                        nl::logger::GetGlobalLogger()->Log(
+                            nl::LogType::Warn,
+                            __FILE__,
+                            __LINE__,
+                            __FUNCTION__,
+                            msg);
 #endif
 
-                    FreeOverlapped(overlapped);
+                        if (!WriteFile(g_hPipe, overlapped->lpBuffer->Buffer + overlapped->lpBuffer->Offset, (DWORD)overlapped->lpBuffer->Length, nullptr, &overlapped->Overlapped))
+                        {
+                            DWORD dwCode = GetLastError();
+                            if (dwCode != ERROR_IO_PENDING)
+                            {
+#ifdef __DBG_TRACING
+                                char msg[1024];
+                                sprintf_s(msg, "err WriteFile code: %u", dwCode);
+
+                                nl::logger::GetGlobalLogger()->Log(
+                                    nl::LogType::Error,
+                                    __FILE__,
+                                    __LINE__,
+                                    __FUNCTION__,
+                                    msg);
+#endif
+                            }
+                        }
+                    }
+                    else
+                    {
+                        FreeOverlappedBuffer(overlapped->lpBuffer);
+
+                        // more data to send?
+                        AcquireSRWLockExclusive(&g_sendBufferLock);
+                        overlapped->lpBuffer = nl::linkedlist::PopHead(&g_lpSendBufferHead, &g_lpSendBufferTail);
+                        if (overlapped->lpBuffer == nullptr)
+                            g_bIsSending = false;
+
+                        if (overlapped->lpBuffer)
+                        {
+                            PipeCommand* cmd = reinterpret_cast<PipeCommand*>(overlapped->lpBuffer);
+                            cmd->PacketIndex = InterlockedIncrement64(&g_lNextPacketIndex);
+
+                            // write to pipe first, then release lock
+                            if (!WriteFile(g_hPipe, overlapped->lpBuffer->Buffer + overlapped->lpBuffer->Offset, (DWORD)overlapped->lpBuffer->Length, nullptr, &overlapped->Overlapped))
+                            {
+                                DWORD dwCode = GetLastError();
+                                if (dwCode != ERROR_IO_PENDING)
+                                {
+#ifdef __DBG_TRACING
+                                    char msg[1024];
+                                    sprintf_s(msg, "err WriteFile code: %u", dwCode);
+
+                                    nl::logger::GetGlobalLogger()->Log(
+                                        nl::LogType::Error,
+                                        __FILE__,
+                                        __LINE__,
+                                        __FUNCTION__,
+                                        msg);
+#endif
+                                }
+                            }
+
+                            ReleaseSRWLockExclusive(&g_sendBufferLock);
+                        }
+                        else
+                        {
+                            // release lock first, then free overlapped
+                            ReleaseSRWLockExclusive(&g_sendBufferLock);
+                            FreeOverlapped(overlapped);
+                        }
+                    }
                 }
                 else
                     throw Exception("Unknown trace event");

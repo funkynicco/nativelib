@@ -223,6 +223,8 @@ namespace NativeLibAllocationTrace
             if (_outstandingIO != 0)
                 throw new InvalidOperationException("Outstanding I/O is not zero.");
 
+            _nextPacketIndex = 0;
+
             _pipeServer = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
             Interlocked.Increment(ref _outstandingIO);
             _pipeServer.BeginWaitForConnection(OnConnectionAsync, null);
@@ -301,7 +303,7 @@ namespace NativeLibAllocationTrace
                 return;
             }
 
-            Debug.WriteLine($"Read {read} bytes");
+            //Debug.WriteLine($"Read {read} bytes");
 
             ProcessData(read);
 

@@ -10,25 +10,33 @@ int main(int, char**)
 
     const int PointerCount = 5000;
 
+    LONG_PTR nextPtr = 1;
+
     for (;;)
     {
         for (int i = 1; i <= PointerCount; ++i)
         {
-            nl::trace::AddAllocation(
+            nl::trace::X_AddAllocation(
                 __FILE__,
                 __LINE__,
                 __FUNCTION__,
-                reinterpret_cast<void*>((LONG_PTR)i),
+                reinterpret_cast<void*>(nextPtr++),
                 1024);
 
             Sleep(0);
         }
 
-        for (int i = 1; i <= PointerCount; ++i)
+        Sleep(2000);
+
+#if 1
+        for (LONG_PTR i = 1; i < nextPtr; ++i)
         {
-            nl::trace::RemoveAllocation(reinterpret_cast<void*>((LONG_PTR)i));
-            Sleep(0);
+            nl::trace::X_RemoveAllocation(reinterpret_cast<void*>(i));
+            Sleep(1);
         }
+
+        nextPtr = 1;
+#endif
 
         Sleep(2000);
     }

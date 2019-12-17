@@ -60,13 +60,12 @@ namespace NativeLibAllocationTrace
             UpdateSizing();
             UpdatePointerStatistics();
 
-            var lvi = new ListViewItem($"162.394");
-            lvi.SubItems.Add(@"D:\Coding\CPP\MyLibs\nativelib\tool\NativeLibAllocationTrace\src\test.cpp:359");
-            lvi.SubItems.Add("CMyClassName::AllocateOverlapped");
-            lvi.SubItems.Add($"0xCCDA23AF38D9040D");
-            lvTraces.Items.Add(lvi);
+            //var lvi = new ListViewItem($"162.394");
+            //lvi.SubItems.Add(@"D:\Coding\CPP\MyLibs\nativelib\tool\NativeLibAllocationTrace\src\test.cpp:359");
+            //lvi.SubItems.Add("CMyClassName::AllocateOverlapped");
+            //lvi.SubItems.Add($"0xCCDA23AF38D9040D");
+            //lvTraces.Items.Add(lvi);
 
-            //throw new Exception("ask for pointer symbolic info");
             _timer = new Timer()
             {
                 Interval = 100,
@@ -121,18 +120,22 @@ namespace NativeLibAllocationTrace
             }
             else if (ev is AddAllocationRpcEvent addAllocationEvent)
             {
-                /*var pointerData = GetPointerDataAsync(addAllocationEvent.Pointer);
+                Debug.WriteLine($"add 0x{addAllocationEvent.Pointer.ToString("x8")}");
+
+//#if xx
+                var pointerData = await GetPointerDataAsync(addAllocationEvent.Pointer);
                 foreach (var ptr in addAllocationEvent.Stack)
                 {
                     var info = await GetPointerDataAsync(ptr);
                     // ...
-                }*/
+                }
+//#endif
 
                 var lvi = new ListViewItem($"{addAllocationEvent.Time:0.000}");
                 lvi.Tag = new PointerInfoTag(addAllocationEvent.Pointer, addAllocationEvent.SizeOfPointerData);
                 lvi.SubItems.Add($"{addAllocationEvent.Filename}:{addAllocationEvent.Line}");
                 lvi.SubItems.Add(addAllocationEvent.Function);
-                lvi.SubItems.Add($"0x{addAllocationEvent.Pointer.ToString("X8")} ({addAllocationEvent.SizeOfPointerData} B)");
+                lvi.SubItems.Add($"0x{addAllocationEvent.Pointer.ToString("X8")} ({Util.GetSize(addAllocationEvent.SizeOfPointerData)})");
                 lvTraces.Items.Add(lvi);
 
                 if (_lviMap.ContainsKey(addAllocationEvent.Pointer))
@@ -203,7 +206,7 @@ namespace NativeLibAllocationTrace
         private void UpdatePointerStatistics()
         {
             tslPointerCount.Text = $"{_pointerStatistics.Count} pointers";
-            tslMemorySize.Text = $"{_pointerStatistics.MemorySize} B";
+            tslMemorySize.Text = Util.GetSize(_pointerStatistics.MemorySize);
             tslTotalAllocations.Text = $"{_pointerStatistics.TotalCount} total allocations";
         }
     }

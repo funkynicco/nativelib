@@ -13,7 +13,8 @@ namespace NativeLibAllocationTrace
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            var x = new MainForm();
+            Application.Run(x);
         }
     }
 }

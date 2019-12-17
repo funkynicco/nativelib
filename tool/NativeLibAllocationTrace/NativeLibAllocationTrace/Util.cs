@@ -20,5 +20,23 @@ namespace NativeLibAllocationTrace
 
             return sb.ToString();
         }
+
+        public static string GetSize(long size)
+        {
+            var types = new string[] { "B", "KB", "MB", "GB", "TB", "PB", "EB" };
+            var type = 0;
+
+            var val = (double)size;
+            while (val >= 1024.0)
+            {
+                val /= 1024.0;
+                ++type;
+            }
+
+            if (type == 0)
+                return $"{size} B";
+
+            return $"{val:0.00} {types[type]}";
+        }
     }
 }
