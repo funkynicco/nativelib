@@ -30,6 +30,37 @@ namespace nl
             SCANNER_OPTION_DEFAULT = SCANNER_OPTION_NONE
         };
 
+        class Token
+        {
+        public:
+            Token();
+            Token(TokenType tokenType);
+            Token(TokenType tokenType, std::string_view token);
+
+            operator TokenType() const;
+            operator std::string_view() const;
+            operator std::string() const;
+            operator bool() const;
+            
+            bool operator ==(std::string_view value) const;
+            bool operator !=(std::string_view value) const;
+
+            // data is NOT nullterminated!
+            const char* data() const;
+            size_t length() const;
+
+            bool GetToken(int* pnValue) const;
+            bool GetToken(unsigned int* pnValue) const;
+            bool GetToken(__int64* pnValue) const;
+            bool GetToken(unsigned __int64* pnValue) const;
+            bool GetToken(float* pnValue) const;
+            bool GetToken(double* pnValue) const;
+
+        private:
+            TokenType m_tokenType;
+            std::string_view m_token;
+        };
+
         class Scanner
         {
         public:
@@ -44,19 +75,10 @@ namespace nl
             Scanner& operator =(const Scanner&) = delete;
             Scanner& operator =(Scanner&&) noexcept = delete;
 
-            TokenType NextToken();
+            Token Next();
 
             void SetMark();
             void GoMark();
-
-            TokenType GetTokenType() const;
-            std::string_view GetToken() const;
-            bool GetToken(int* pnValue) const;
-            bool GetToken(unsigned int* pnValue) const;
-            bool GetToken(__int64* pnValue) const;
-            bool GetToken(unsigned __int64* pnValue) const;
-            bool GetToken(float* pnValue) const;
-            bool GetToken(double* pnValue) const;
 
             static Scanner FromFile(const char* filename);
 

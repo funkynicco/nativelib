@@ -225,7 +225,7 @@ namespace nl
             return false;
         }
 
-        TokenType Scanner::NextToken()
+        Token Scanner::Next()
         {
             m_context.TempToken.clear();
 
@@ -311,11 +311,11 @@ namespace nl
                     m_context.TempToken))
                 {
                     m_context.SetTokenToTemp(tokenType);
-                    return tokenType;
+                    return Token(tokenType, m_context.GetTokenView());
                 }
 
                 m_context.SetToken(token_start, token_end, tokenType);
-                return TokenType::String;
+                return Token(TokenType::String, m_context.GetTokenView());
             }
 
             // single quoted strings
@@ -354,11 +354,11 @@ namespace nl
                     m_context.TempToken))
                 {
                     m_context.SetTokenToTemp(tokenType);
-                    return tokenType;
+                    return Token(tokenType, m_context.GetTokenView());
                 }
 
                 m_context.SetToken(token_start, token_end, tokenType);
-                return TokenType::String;
+                return Token(TokenType::String, m_context.GetTokenView());
             }
 
             /*
@@ -368,7 +368,7 @@ namespace nl
             - [x] double quoted string
             - [x] single quoted string
             - [x] number with hex
-            - [ ] float
+            - [x] float
             - [x] keyword
             */
 
@@ -395,7 +395,7 @@ namespace nl
                     if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
                         m_context.SetTokenToTemp(tokenType);
 
-                    return tokenType;
+                    return Token(tokenType, m_context.GetTokenView());
                 }
                 else
                 {
@@ -432,7 +432,7 @@ namespace nl
                     if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
                         m_context.SetTokenToTemp(tokenType);
 
-                    return tokenType;
+                    return Token(tokenType, m_context.GetTokenView());
                 }
             }
 
@@ -450,7 +450,7 @@ namespace nl
                 if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
                     m_context.SetTokenToTemp(tokenType);
 
-                return tokenType;
+                return Token(tokenType, m_context.GetTokenView());
             }
 
             tokenType = TokenType::Delimiter;
@@ -459,7 +459,7 @@ namespace nl
             if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
                 m_context.SetTokenToTemp(tokenType);
 
-            return tokenType;
+            return Token(tokenType, m_context.GetTokenView());
         }
 
         void Scanner::SetMark()
@@ -470,124 +470,6 @@ namespace nl
         void Scanner::GoMark()
         {
             m_context = m_markedContext;
-        }
-
-        TokenType Scanner::GetTokenType() const
-        {
-            return m_context.TokenType;
-        }
-
-        std::string_view Scanner::GetToken() const
-        {
-            return std::string_view(
-                m_context.TokenBegin,
-                size_t(m_context.TokenEnd - m_context.TokenBegin));
-        }
-
-        bool Scanner::GetToken(int* pnValue) const
-        {
-            auto token = GetToken();
-            if (token.length() == 0)
-                return false;
-
-            bool isNegative = token[0] == '-';
-            if (isNegative)
-                token = token.substr(1);
-
-            int value = 0;
-            for (auto x : token)
-            {
-                value *= 10;
-                value += x - '0';
-            }
-
-            if (isNegative)
-                value = -value;
-
-            *pnValue = value;
-            return true;
-        }
-
-        bool Scanner::GetToken(unsigned int* pnValue) const
-        {
-            auto token = GetToken();
-            if (token.length() == 0)
-                return false;
-
-            unsigned int value = 0;
-            for (auto x : token)
-            {
-                value *= 10;
-                value += x - '0';
-            }
-
-            *pnValue = value;
-            return true;
-        }
-
-        bool Scanner::GetToken(__int64* pnValue) const
-        {
-            auto token = GetToken();
-            if (token.length() == 0)
-                return false;
-
-            bool isNegative = token[0] == '-';
-            if (isNegative)
-                token = token.substr(1);
-
-            __int64 value = 0;
-            for (auto x : token)
-            {
-                value *= 10;
-                value += (__int64)x - '0';
-            }
-
-            if (isNegative)
-                value = -value;
-
-            *pnValue = value;
-            return true;
-        }
-
-        bool Scanner::GetToken(unsigned __int64* pnValue) const
-        {
-            auto token = GetToken();
-            if (token.length() == 0)
-                return false;
-
-            unsigned __int64 value = 0;
-            for (auto x : token)
-            {
-                value *= 10;
-                value += (unsigned __int64)x - '0';
-            }
-
-            *pnValue = value;
-            return true;
-        }
-
-        bool Scanner::GetToken(float* pnValue) const
-        {
-            auto token = GetToken();
-
-            char bytes[128];
-            memcpy(bytes, token.data(), token.length());
-            bytes[token.length()] = 0;
-
-            *pnValue = strtof(bytes, nullptr);
-            return true;
-        }
-
-        bool Scanner::GetToken(double* pnValue) const
-        {
-            auto token = GetToken();
-
-            char bytes[128];
-            memcpy(bytes, token.data(), token.length());
-            bytes[token.length()] = 0;
-
-            *pnValue = strtod(bytes, nullptr);
-            return true;
         }
 
         bool Scanner::TransformToken(TokenType& tokenType, std::string_view token, std::string& result)
