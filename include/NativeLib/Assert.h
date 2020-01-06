@@ -19,10 +19,16 @@ namespace nl
     }
 }
 
-#define nl_assert(__expr) if (!(__expr)) nl::assert::CallAssertHandler(#__expr, __FILE__, __LINE__, __FUNCTION__);
+#define nl_assert(__expr) \
+    if (!(__expr)) \
+    { \
+        nl::assert::CallAssertHandler(#__expr, __FILE__, __LINE__, __FUNCTION__); \
+        DebugBreak(); \
+    } \
+    __analysis_assume(__expr)
 
 #if _DEBUG
 #define nl_assert_if_debug(__expr) nl_assert(__expr)
 #else
-#define nl_assert_if_debug(__expr)
+#define nl_assert_if_debug(__expr) __expr
 #endif

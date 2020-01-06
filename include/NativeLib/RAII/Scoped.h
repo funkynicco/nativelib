@@ -24,7 +24,7 @@ namespace nl
         {
         }
 
-        inline Scoped(Scoped&& other)
+        inline Scoped(Scoped&& other) noexcept
         {
             m_obj = other.m_obj;
             m_func = other.m_func;
@@ -38,8 +38,10 @@ namespace nl
             Release();
         }
 
-        inline Scoped& operator =(Scoped&& other)
+        inline Scoped& operator =(Scoped&& other) noexcept
         {
+            Release();
+
             m_obj = other.m_obj;
             m_func = other.m_func;
             other.m_obj = nullptr;

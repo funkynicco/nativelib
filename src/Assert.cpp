@@ -21,6 +21,20 @@ void nl::assert::CallAssertHandler(const char* expression, const char* filename,
     assert.Line = line;
     assert.Function = function;
 
-    if (GetAssertHandlerPointer())
-        GetAssertHandlerPointer()(assert);
+    if (!GetAssertHandlerPointer())
+    {
+#ifdef _DEBUG
+#ifdef _WIN32
+        OutputDebugStringA("nl Assert handler not set\n");
+        DebugBreak();
+#else
+#error to be implemented
+#endif
+#endif
+
+        exit(1);
+        return;
+    }
+
+    GetAssertHandlerPointer()(assert);
 }

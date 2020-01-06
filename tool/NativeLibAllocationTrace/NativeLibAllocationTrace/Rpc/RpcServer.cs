@@ -9,77 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace NativeLibAllocationTrace
-{
-    public abstract class RpcEvent : IDisposable
-    {
-        public void Dispose()
-            => Dispose(true);
-
-        protected virtual void Dispose(bool disposing) { }
-    }
-
-    public class ConnectedRpcEvent : RpcEvent
-    {
-    }
-
-    public class DisconnectedRpcEvent : RpcEvent
-    {
-    }
-
-    public class AddAllocationRpcEvent : RpcEvent
-    {
-        public double Time { get; private set; }
-
-        public string Filename { get; private set; }
-
-        public int Line { get; private set; }
-
-        public string Function { get; private set; }
-
-        public long Pointer { get; private set; }
-
-        public long SizeOfPointerData { get; private set; }
-
-        private readonly List<long> _stack = new List<long>();
-        public IReadOnlyList<long> Stack => _stack;
-
-        public static AddAllocationRpcEvent FromStream(BinaryReader br)
-        {
-            var ev = new AddAllocationRpcEvent();
-            ev.Time = br.ReadDouble();
-            ev.Filename = br.BaseStream.ReadNullTerminatedString(260);
-            ev.Line = br.ReadInt32();
-            ev.Function = br.BaseStream.ReadNullTerminatedString(64);
-            ev.Pointer = br.ReadInt64();
-            ev.SizeOfPointerData = br.ReadInt64();
-
-            var stack = new long[32];
-            for (int i = 0; i < stack.Length; ++i)
-            {
-                stack[i] = br.ReadInt64();
-            }
-
-            var frames = br.ReadUInt16();
-            ev._stack.AddRange(stack.Take(frames));
-
-            return ev;
-        }
-    }
-
-    public class RemoveAllocationRpcEvent : RpcEvent
-    {
-        public long Pointer { get; private set; }
-
-        public static RemoveAllocationRpcEvent FromStream(BinaryReader br)
-        {
-            return new RemoveAllocationRpcEvent()
-            {
-                Pointer = br.ReadInt64()
-            };
-        }
-    }
-
+namespace NativeLibAllocationTrace.Rpc
+{   
     public struct PointerData
     {
         public long Pointer { get; set; }
@@ -95,48 +26,8 @@ namespace NativeLibAllocationTrace
 
     public delegate Task DispatchEventDelegate(RpcEvent ev);
 
-    public class RpcServer : IDisposable
+    public partial class RpcServer : IDisposable
     {
-        class Request : IDisposable
-        {
-            private readonly ManualResetEvent _completed = new ManualResetEvent(false);
-
-            public long Id { get; private set; }
-
-            public byte[] Response { get; set; }
-
-            public int ResponseLength { get; set; }
-
-            public Request(long id)
-            {
-                Id = id;
-            }
-
-            public void Dispose()
-            {
-                _completed.Dispose();
-            }
-
-            public void Complete()
-                => _completed.Set();
-
-            public async Task Wait()
-            {
-                using (var cancellationTokenSource = new CancellationTokenSource())
-                {
-                    await _completed.WaitOneAsync(cancellationTokenSource.Token);
-                }
-            }
-
-            public async Task<bool> Wait(TimeSpan timeout)
-            {
-                using (var cancellationTokenSource = new CancellationTokenSource())
-                {
-                    return await _completed.WaitOneAsync(timeout, cancellationTokenSource.Token);
-                }
-            }
-        }
-
         private const string PipeName = "nl-trace-4661A80D-CD1F-4692-9269-BCC420539E38";
 
         private readonly byte[] _readBuffer = new byte[65536];
@@ -303,7 +194,7 @@ namespace NativeLibAllocationTrace
                 return;
             }
 
-            //Debug.WriteLine($"Read {read} bytes");
+            Debug.WriteLine($"Read {read} bytes");
 
             ProcessData(read);
 
@@ -358,6 +249,7 @@ namespace NativeLibAllocationTrace
                 else if (command == 2) // pointer data
                 {
                     var requestId = br.ReadInt64();
+                    Debug.WriteLine($"POINTER DATA, rid: {requestId}");
 
                     var bufferLength = (int)(br.BaseStream.Length - br.BaseStream.Position);
                     var buffer = new byte[bufferLength];
@@ -390,6 +282,8 @@ namespace NativeLibAllocationTrace
 
             var request = new Request(Interlocked.Increment(ref _nextRequestId));
 
+            Debug.WriteLine($"QueryFunctionPointerData, rid: {request.Id}");
+
             _requestsLock.EnterWriteLock();
             try
             {
@@ -412,6 +306,8 @@ namespace NativeLibAllocationTrace
             }
 
             await request.Wait();
+
+            Debug.WriteLine($"QueryFunctionPointerData REQUEST COMPLETED rid: {request.Id}");
 
             using (request)
             {

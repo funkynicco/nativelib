@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using NativeLibAllocationTrace.Rpc;
 
 namespace NativeLibAllocationTrace
 {
@@ -17,17 +18,30 @@ namespace NativeLibAllocationTrace
     {
         class PointerStatistics
         {
-            public int Count { get; set; }
+            public int Count { get; private set; }
 
-            public long MemorySize { get; set; }
+            public long MemorySize { get; private set; }
 
-            public long TotalCount { get; set; }
+            public long TotalCount { get; private set; }
 
             public void Reset()
             {
                 Count = 0;
                 MemorySize = 0;
                 TotalCount = 0;
+            }
+
+            public void Add(long bytes)
+            {
+                ++Count;
+                MemorySize += bytes;
+                ++TotalCount;
+            }
+
+            public void Remove(long bytes)
+            {
+                --Count;
+                MemorySize -= bytes;
             }
         }
 
@@ -122,36 +136,39 @@ namespace NativeLibAllocationTrace
             {
                 Debug.WriteLine($"add 0x{addAllocationEvent.Pointer.ToString("x8")}");
 
-//#if xx
-                var pointerData = await GetPointerDataAsync(addAllocationEvent.Pointer);
+#if DEBUG
                 foreach (var ptr in addAllocationEvent.Stack)
                 {
                     var info = await GetPointerDataAsync(ptr);
                     // ...
+                    break;
                 }
-//#endif
+#endif
 
-                var lvi = new ListViewItem($"{addAllocationEvent.Time:0.000}");
+                if (_lviMap.TryGetValue(addAllocationEvent.Pointer, out ListViewItem lvi))
+                {
+                    _pointerStatistics.Remove((lvi.Tag as PointerInfoTag).SizeOfPointerData);
+                    lvi.Remove();
+                    _lviMap.Remove(addAllocationEvent.Pointer);
+                }
+
+                lvi = new ListViewItem($"{addAllocationEvent.Time:0.000}");
                 lvi.Tag = new PointerInfoTag(addAllocationEvent.Pointer, addAllocationEvent.SizeOfPointerData);
                 lvi.SubItems.Add($"{addAllocationEvent.Filename}:{addAllocationEvent.Line}");
                 lvi.SubItems.Add(addAllocationEvent.Function);
                 lvi.SubItems.Add($"0x{addAllocationEvent.Pointer.ToString("X8")} ({Util.GetSize(addAllocationEvent.SizeOfPointerData)})");
                 lvTraces.Items.Add(lvi);
 
-                if (_lviMap.ContainsKey(addAllocationEvent.Pointer))
-                    throw new Exception($"Duplicated key added!!");
-
                 _lviMap.Add(addAllocationEvent.Pointer, lvi);
 
-                _pointerStatistics.Count++;
-                _pointerStatistics.MemorySize += addAllocationEvent.SizeOfPointerData;
-                _pointerStatistics.TotalCount++;
+                _pointerStatistics.Add(addAllocationEvent.SizeOfPointerData);
                 UpdatePointerStatistics();
             }
             else if (ev is RemoveAllocationRpcEvent removeAllocationEvent)
             {
                 if (!_lviMap.TryGetValue(removeAllocationEvent.Pointer, out ListViewItem lvi))
-                    throw new Exception("lvi not found, ptr: 0x" + removeAllocationEvent.Pointer.ToString("x8"));
+                    return;
+                //throw new Exception("lvi not found, ptr: 0x" + removeAllocationEvent.Pointer.ToString("x8"));
 
                 var check = lvTraces.Items.Count;
 
@@ -162,8 +179,7 @@ namespace NativeLibAllocationTrace
                 if (lvTraces.Items.Count == check)
                     throw new Exception($"inv1 {lvTraces.Items.Count} == {check}");
 
-                _pointerStatistics.Count--;
-                _pointerStatistics.MemorySize -= tag.SizeOfPointerData;
+                _pointerStatistics.Remove(tag.SizeOfPointerData);
 
                 if (_pointerStatistics.Count != lvTraces.Items.Count)
                 {
