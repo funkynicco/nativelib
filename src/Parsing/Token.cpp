@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 
+#include <NativeLib/Parsing/Token.h>
 #include <NativeLib/Parsing/Scanner.h>
 
 #include <NativeLib/Assert.h>
@@ -9,16 +10,19 @@ namespace nl
     namespace parsing
     {
         Token::Token() :
+            m_line(1),
             m_tokenType(TokenType::EndOfFile)
         {
         }
 
-        Token::Token(TokenType tokenType) :
+        Token::Token(int line, TokenType tokenType) :
+            m_line(line),
             m_tokenType(tokenType)
         {
         }
 
-        Token::Token(TokenType tokenType, std::string_view token) :
+        Token::Token(int line, TokenType tokenType, std::string_view token) :
+            m_line(line),
             m_tokenType(tokenType),
             m_token(token)
         {
@@ -52,6 +56,11 @@ namespace nl
         bool Token::operator !=(std::string_view value) const
         {
             return value != m_token;
+        }
+
+        std::string_view Token::view() const
+        {
+            return m_token;
         }
 
         const char* Token::data() const
@@ -168,6 +177,41 @@ namespace nl
 
             *pnValue = strtod(bytes, nullptr);
             return true;
+        }
+
+        bool Token::IsKeyword() const
+        {
+            return m_tokenType == TokenType::Keyword;
+        }
+
+        bool Token::IsDelimiter() const
+        {
+            return m_tokenType == TokenType::Delimiter;
+        }
+
+        bool Token::IsString() const
+        {
+            return m_tokenType == TokenType::String;
+        }
+
+        bool Token::IsNumber() const
+        {
+            return m_tokenType == TokenType::Number;
+        }
+
+        bool Token::IsHex() const
+        {
+            return m_tokenType == TokenType::Hex;
+        }
+
+        bool Token::IsFloat() const
+        {
+            return m_tokenType == TokenType::Float;
+        }
+
+        int Token::GetLine() const
+        {
+            return m_line;
         }
     }
 }

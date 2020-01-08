@@ -35,4 +35,14 @@
       <Item Name="References">m_shared->References</Item>
     </Expand>
   </Type>
+
+  <Type Name="nl::parsing::Token">
+    <DisplayString Condition="m_tokenType &gt;= 0">{m_tokenType}: {m_token,s}</DisplayString>
+    <DisplayString Condition="m_tokenType &lt; 0">{m_tokenType}</DisplayString>
+    <Expand>
+      <Item Name="Token">m_token,s</Item>
+      <Item Name="Type">m_tokenType</Item>
+      <Item Name="Line">m_line</Item>
+    </Expand>
+  </Type>
 </AutoVisualizer>

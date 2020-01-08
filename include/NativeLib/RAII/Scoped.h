@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NativeLib/RAII/Methods.h>
+#include <NativeLib/Assert.h>
 
 #include <functional>
 
@@ -50,14 +51,41 @@ namespace nl
 
         inline Scoped& operator =(const Scoped&) = delete;
 
-        inline TObject* get() { return m_obj; }
-        inline const TObject* get() const { return m_obj; }
+        inline TObject* get()
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
 
-        inline operator TObject*() { return m_obj; }
-        inline operator const TObject*() const { return m_obj; }
+        inline const TObject* get() const
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
 
-        inline TObject* operator ->() { return m_obj; }
-        inline const TObject* operator ->() const { return m_obj; }
+        inline operator TObject* ()
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
+
+        inline operator const TObject* () const
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
+
+        inline TObject* operator ->()
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
+
+        inline const TObject* operator ->() const
+        {
+            nl_assert_if_debug(m_obj != nullptr);
+            return m_obj;
+        }
 
         inline void Release()
         {

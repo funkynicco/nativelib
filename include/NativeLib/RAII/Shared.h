@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NativeLib/RAII/Methods.h>
+#include <NativeLib/Assert.h>
 
 #include <functional>
 
@@ -103,14 +104,41 @@ namespace nl
             return *this;
         }
 
-        inline TObject* get() { return m_shared->Object; }
-        inline const TObject* get() const { return m_shared->Object; }
+        inline TObject* get()
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
 
-        inline operator TObject*() { return m_shared->Object; }
-        inline operator const TObject*() const { return m_shared->Object; }
+        inline const TObject* get() const
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
 
-        inline TObject* operator ->() { return m_shared->Object; }
-        inline const TObject* operator ->() const { return m_shared->Object; }
+        inline operator TObject* ()
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
+
+        inline operator const TObject* () const
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
+
+        inline TObject* operator ->()
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
+
+        inline const TObject* operator ->() const
+        {
+            nl_assert_if_debug(m_shared != nullptr);
+            return m_shared->Object;
+        }
 
         inline void Release()
         {

@@ -2,6 +2,9 @@ project "nativelib.test"
     dependson "nativelib"
     kind "ConsoleApp"
 
+    pchheader "StdAfx.h"
+    pchsource "src/StdAfx.cpp"
+
     files {
         "src/**.cpp",
         "src/**.h",

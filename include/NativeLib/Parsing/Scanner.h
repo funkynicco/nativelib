@@ -1,26 +1,18 @@
 #pragma once
 
-#include <NativeLib/Logger.h>
-#include <NativeLib/RAII/Scoped.h>
+#include <NativeLib/Parsing/Util.h>
+#include <NativeLib/Parsing/Token.h>
+#include <NativeLib/Parsing/Context.h>
+
+#include <NativeLib/RAII/Shared.h>
 
 #include <string>
+#include <stack>
 
 namespace nl
 {
     namespace parsing
     {
-        enum class TokenType
-        {
-            Error = -2,
-            EndOfFile = -1,
-            Keyword,
-            Delimiter,
-            String,
-            Number,
-            Hex,
-            Float
-        };
-
         std::string_view TokenTypeToString(TokenType tokenType);
 
         enum
@@ -30,55 +22,34 @@ namespace nl
             SCANNER_OPTION_DEFAULT = SCANNER_OPTION_NONE
         };
 
-        class Token
-        {
-        public:
-            Token();
-            Token(TokenType tokenType);
-            Token(TokenType tokenType, std::string_view token);
-
-            operator TokenType() const;
-            operator std::string_view() const;
-            operator std::string() const;
-            operator bool() const;
-            
-            bool operator ==(std::string_view value) const;
-            bool operator !=(std::string_view value) const;
-
-            // data is NOT nullterminated!
-            const char* data() const;
-            size_t length() const;
-
-            bool GetToken(int* pnValue) const;
-            bool GetToken(unsigned int* pnValue) const;
-            bool GetToken(__int64* pnValue) const;
-            bool GetToken(unsigned __int64* pnValue) const;
-            bool GetToken(float* pnValue) const;
-            bool GetToken(double* pnValue) const;
-
-        private:
-            TokenType m_tokenType;
-            std::string_view m_token;
-        };
-
         class Scanner
         {
         public:
+            Scanner() noexcept;
             Scanner(std::string_view str);
             Scanner(const char* str, size_t length = (size_t)-1);
             Scanner(const std::string& str);
             Scanner(std::string&& str);
+
+            Scanner(Scanner&& other) noexcept;
+            Scanner& operator =(Scanner&& other) noexcept;
+
             virtual ~Scanner();
 
             Scanner(const Scanner&) = delete;
-            Scanner(Scanner&&) noexcept = delete;
             Scanner& operator =(const Scanner&) = delete;
-            Scanner& operator =(Scanner&&) noexcept = delete;
-
+            
+            // Advances the scanner to the next token
             Token Next();
 
-            void SetMark();
-            void GoMark();
+            // Pushes the context onto the context stack
+            void SaveContext();
+            
+            // Restores the previous context in the stack
+            void RestoreContext();
+
+            // Restores the context and then saves context again to reset the context to the previous context in the stack
+            void ResetContext();
 
             static Scanner FromFile(const char* filename);
 
@@ -86,102 +57,10 @@ namespace nl
             virtual bool TransformToken(TokenType& tokenType, std::string_view token, std::string& result);
 
         private:
-            struct Context
-            {
-                // int LineNumber; ??
+            std::stack<nl::Shared<Context>> m_contextStack;
 
-                class Scanner* lpScanner;
-
-                const char* ViewBegin;
-                const char* ViewEnd;
-
-                const char* TokenBegin;
-                const char* TokenEnd;
-                TokenType TokenType;
-
-                // use only when a token needs to change value, ie \n in a string
-                std::string TempToken;
-
-                Context(class Scanner* scanner) :
-                    lpScanner(scanner)
-                {
-                    Reset();
-                }
-
-                Context(const Context&) = delete;
-                Context(Context&&) noexcept = delete;
-                Context& operator =(Context&&) noexcept = delete;
-
-                Context& operator =(const Context& context)
-                {
-                    lpScanner = context.lpScanner;
-                    ViewBegin = context.ViewBegin;
-                    ViewEnd = context.ViewEnd;
-                    TokenBegin = context.TokenBegin;
-                    TokenEnd = context.TokenEnd;
-                    TokenType = context.TokenType;
-                    return *this;
-                }
-
-                void Reset()
-                {
-                    ViewBegin = lpScanner->m_dataBegin;
-                    ViewEnd = lpScanner->m_dataEnd;
-                    TokenBegin = TokenEnd = nullptr;
-                    TokenType = TokenType::Error;
-                }
-
-                void Empty()
-                {
-                    ViewBegin = ViewEnd = lpScanner->m_dataEnd;
-                    TokenBegin = TokenEnd = nullptr;
-                    TokenType = TokenType::Error;
-                }
-
-                void SetToken(const char* tokenBegin, const char* tokenEnd, nl::parsing::TokenType tokenType)
-                {
-                    TokenBegin = tokenBegin;
-                    TokenEnd = tokenEnd;
-                    TokenType = tokenType;
-                }
-
-                void SetTokenToTemp(nl::parsing::TokenType tokenType)
-                {
-                    TokenBegin = TempToken.c_str();
-                    TokenEnd = TokenBegin + TempToken.length();
-                    TokenType = tokenType;
-                }
-
-                bool IsEnd() const
-                {
-                    return ViewBegin == ViewEnd;
-                }
-
-                bool IsTokenSet() const
-                {
-                    return TokenBegin != nullptr;
-                }
-
-                std::string_view GetView() const
-                {
-                    return std::string_view(ViewBegin, ViewEnd - ViewBegin);
-                }
-
-                std::string_view GetTokenView() const
-                {
-                    return std::string_view(TokenBegin, TokenEnd - TokenBegin);
-                }
-            };
-
-            std::string m_container;
-            
-            const char* m_dataBegin;
-            const char* m_dataEnd;
-
-            Context m_context;
-            Context m_markedContext;
-
-            unsigned char m_aHexLookup[256];
+            const Token m_endOfFileToken;
+            const Token m_errorToken;
 
             bool IsWhitespace(char c) const;
             bool IsKeyword(char c, bool first) const;
@@ -189,6 +68,8 @@ namespace nl
             bool SkipBlank();
             bool SkipSingleComment();
             bool SkipMultiComment();
+
+            static int CalculateLines(const char* start, const char* end);
         };
     }
 }

@@ -10,6 +10,27 @@ namespace nl
 {
     namespace parsing
     {
+        // 16x16 grid
+        constexpr unsigned char HexTable[] =
+        {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //   0
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  16
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  32
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  48
+            0x00, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  64
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  80
+            0x00, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  96
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 112
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 128
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 144
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 160
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 176
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 192
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 208
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 224
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 240
+        };
+
         std::string_view TokenTypeToString(TokenType tokenType)
         {
             switch (tokenType)
@@ -27,74 +48,63 @@ namespace nl
             return std::string_view("Unknown token type");
         }
 
-        template <size_t SizeOfTable>
-        inline void InitializeHexLookup(unsigned char(&aHexLookup)[SizeOfTable])
+        Scanner::Scanner() noexcept :
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error)
         {
-            static_assert(SizeOfTable == 256, "Hex table must be 256 bytes");
-            ZeroMemory(aHexLookup, sizeof(aHexLookup));
-
-            for (unsigned char i = 0; i < 10; ++i)
-            {
-                aHexLookup[i + '0'] = i;
-            }
-
-            for (unsigned char i = 0; i < 6; ++i)
-            {
-                aHexLookup[i + 'a'] = i + 10;
-                aHexLookup[i + 'A'] = i + 10;
-            }
         }
 
         Scanner::Scanner(std::string_view str) :
-            m_context(this),
-            m_markedContext(this)
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error)
         {
-            m_dataBegin = str.data();
-            m_dataEnd = str.data() + str.length();
-            m_context.Reset();
-
-            InitializeHexLookup(m_aHexLookup);
+            m_contextStack.push(nl::ConstructShared<Context>(str.data(), str.data() + str.length()));
+            SaveContext(); // save a duplicate
         }
 
         Scanner::Scanner(const char* str, size_t length) :
-            m_context(this),
-            m_markedContext(this)
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error)
         {
             nl_assert_if_debug(str != nullptr);
 
             if (length == (size_t)-1)
                 length = strlen(str);
 
-            m_container = std::string(str, length);
-            m_dataBegin = str;
-            m_dataEnd = str + length;
-            m_context.Reset();
-
-            InitializeHexLookup(m_aHexLookup);
+            auto container = nl::ConstructShared<std::string>(str, length);
+            m_contextStack.push(nl::ConstructShared<Context>(container));
+            SaveContext(); // save a duplicate
         }
 
         Scanner::Scanner(const std::string& str) :
-            m_container(str),
-            m_context(this),
-            m_markedContext(this)
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error)
         {
-            m_dataBegin = m_container.c_str();
-            m_dataEnd = m_dataBegin + m_container.length();
-            m_context.Reset();
-
-            InitializeHexLookup(m_aHexLookup);
+            auto container = nl::ConstructShared<std::string>(str);
+            m_contextStack.push(nl::ConstructShared<Context>(container));
+            SaveContext(); // save a duplicate
         }
 
         Scanner::Scanner(std::string&& str) :
-            m_container(std::move(str)),
-            m_context(this),
-            m_markedContext(this)
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error)
         {
-            m_dataBegin = m_container.c_str();
-            m_dataEnd = m_dataBegin + m_container.length();
-            m_context.Reset();
+            auto container = nl::ConstructShared<std::string>(std::move(str));
+            m_contextStack.push(nl::ConstructShared<Context>(container));
+            SaveContext(); // save a duplicate
+        }
 
-            InitializeHexLookup(m_aHexLookup);
+        Scanner::Scanner(Scanner&& other) noexcept :
+            m_endOfFileToken(0, TokenType::EndOfFile),
+            m_errorToken(0, TokenType::Error),
+            m_contextStack(std::move(other.m_contextStack))
+        {
+        }
+
+        Scanner& Scanner::operator =(Scanner&& other) noexcept
+        {
+            m_contextStack = std::move(other.m_contextStack);
+            return *this;
         }
 
         Scanner::~Scanner()
@@ -158,8 +168,9 @@ namespace nl
 
         bool Scanner::SkipBlank()
         {
-            const char*& p = m_context.ViewBegin;
-            const char*& end = m_context.ViewEnd;
+            Context* const context = m_contextStack.top();
+            const char*& p = context->ViewBegin;
+            const char*& end = context->ViewEnd;
 
             while (
                 p < end &&
@@ -174,8 +185,9 @@ namespace nl
 
         bool Scanner::SkipSingleComment()
         {
-            const char*& p = m_context.ViewBegin;
-            const char*& end = m_context.ViewEnd;
+            Context* const context = m_contextStack.top();
+            const char*& p = context->ViewBegin;
+            const char*& end = context->ViewEnd;
 
             while (p < end)
             {
@@ -206,8 +218,9 @@ namespace nl
 
         bool Scanner::SkipMultiComment()
         {
-            const char*& p = m_context.ViewBegin;
-            const char*& end = m_context.ViewEnd;
+            Context* const context = m_contextStack.top();
+            const char*& p = context->ViewBegin;
+            const char*& end = context->ViewEnd;
 
             while (p < end)
             {
@@ -227,19 +240,20 @@ namespace nl
 
         Token Scanner::Next()
         {
-            m_context.TempToken.clear();
+            Context* const context = m_contextStack.top();
+            context->TempToken.clear();
 
             auto tokenType = TokenType::Error;
 
-            const char*& p = m_context.ViewBegin;
-            const char*& end = m_context.ViewEnd;
+            const char*& p = context->ViewBegin;
+            const char*& end = context->ViewEnd;
 
             for (;;)
             {
                 if (!SkipBlank())
                 {
-                    m_context.Empty();
-                    return TokenType::EndOfFile;
+                    context->Empty();
+                    return m_endOfFileToken;
                 }
 
                 if (*p == '/' &&
@@ -250,8 +264,8 @@ namespace nl
                         p += 2;
                         if (!SkipSingleComment())
                         {
-                            m_context.Empty();
-                            return TokenType::EndOfFile;
+                            context->Empty();
+                            return m_endOfFileToken;
                         }
 
                         continue;
@@ -262,8 +276,8 @@ namespace nl
                         p += 2;
                         if (!SkipMultiComment())
                         {
-                            m_context.Empty();
-                            return TokenType::EndOfFile;
+                            context->Empty();
+                            return m_endOfFileToken;
                         }
 
                         continue;
@@ -274,6 +288,13 @@ namespace nl
             }
 
             const char* token_start = p;
+
+            // calculate lines between previous token point (or start)
+            const char* previousTokenStart = context->TokenBegin;
+            if (previousTokenStart == nullptr)
+                previousTokenStart = context->DataBegin;
+
+            context->Line += CalculateLines(previousTokenStart, token_start);
 
             // double quoted strings
             if (*p == '"')
@@ -308,14 +329,14 @@ namespace nl
                 if (TransformToken(
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
-                    m_context.TempToken))
+                    context->TempToken))
                 {
-                    m_context.SetTokenToTemp(tokenType);
-                    return Token(tokenType, m_context.GetTokenView());
+                    context->SetTokenToTemp(tokenType);
+                    return Token(context->Line, tokenType, context->GetTokenView());
                 }
 
-                m_context.SetToken(token_start, token_end, tokenType);
-                return Token(TokenType::String, m_context.GetTokenView());
+                context->SetToken(token_start, token_end, tokenType);
+                return Token(context->Line, TokenType::String, context->GetTokenView());
             }
 
             // single quoted strings
@@ -351,14 +372,14 @@ namespace nl
                 if (TransformToken(
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
-                    m_context.TempToken))
+                    context->TempToken))
                 {
-                    m_context.SetTokenToTemp(tokenType);
-                    return Token(tokenType, m_context.GetTokenView());
+                    context->SetTokenToTemp(tokenType);
+                    return Token(context->Line, tokenType, context->GetTokenView());
                 }
 
-                m_context.SetToken(token_start, token_end, tokenType);
-                return Token(TokenType::String, m_context.GetTokenView());
+                context->SetToken(token_start, token_end, tokenType);
+                return Token(context->Line, TokenType::String, context->GetTokenView());
             }
 
             /*
@@ -390,12 +411,12 @@ namespace nl
                         ++p;
 
                     tokenType = TokenType::Hex;
-                    m_context.SetToken(token_start, p, tokenType);
+                    context->SetToken(token_start, p, tokenType);
 
-                    if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
-                        m_context.SetTokenToTemp(tokenType);
+                    if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
+                        context->SetTokenToTemp(tokenType);
 
-                    return Token(tokenType, m_context.GetTokenView());
+                    return Token(context->Line, tokenType, context->GetTokenView());
                 }
                 else
                 {
@@ -414,8 +435,8 @@ namespace nl
                             if (floating)
                             {
                                 // multiple dots found in number (illegal)
-                                m_context.Empty();
-                                return TokenType::Error;
+                                context->Empty();
+                                return m_errorToken;
                             }
 
                             floating = true;
@@ -427,12 +448,12 @@ namespace nl
                     }
 
                     tokenType = TokenType::Number;
-                    m_context.SetToken(token_start, p, tokenType);
+                    context->SetToken(token_start, p, tokenType);
 
-                    if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
-                        m_context.SetTokenToTemp(tokenType);
+                    if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
+                        context->SetTokenToTemp(tokenType);
 
-                    return Token(tokenType, m_context.GetTokenView());
+                    return Token(context->Line, tokenType, context->GetTokenView());
                 }
             }
 
@@ -445,31 +466,39 @@ namespace nl
                     ++p;
 
                 tokenType = TokenType::Keyword;
-                m_context.SetToken(token_start, p, tokenType);
+                context->SetToken(token_start, p, tokenType);
 
-                if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
-                    m_context.SetTokenToTemp(tokenType);
+                if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
+                    context->SetTokenToTemp(tokenType);
 
-                return Token(tokenType, m_context.GetTokenView());
+                return Token(context->Line, tokenType, context->GetTokenView());
             }
 
             tokenType = TokenType::Delimiter;
-            m_context.SetToken(token_start, ++p, tokenType);
+            context->SetToken(token_start, ++p, tokenType);
 
-            if (TransformToken(tokenType, m_context.GetTokenView(), m_context.TempToken))
-                m_context.SetTokenToTemp(tokenType);
+            if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
+                context->SetTokenToTemp(tokenType);
 
-            return Token(tokenType, m_context.GetTokenView());
+            return Token(context->Line, tokenType, context->GetTokenView());
         }
 
-        void Scanner::SetMark()
+        void Scanner::SaveContext()
         {
-            m_markedContext = m_context;
+            m_contextStack.push(nl::ConstructShared<Context>(*m_contextStack.top()));
         }
 
-        void Scanner::GoMark()
+        void Scanner::RestoreContext()
         {
-            m_context = m_markedContext;
+            nl_assert_if_debug(m_contextStack.size() > 2); // must contain at least 3 since the 2 are for ResetContext
+            m_contextStack.pop();
+        }
+
+        void Scanner::ResetContext()
+        {
+            nl_assert_if_debug(m_contextStack.size() >= 2); // assert that the stack must contain at least 2 contexts
+            m_contextStack.pop();
+            m_contextStack.push(nl::ConstructShared<Context>(*m_contextStack.top()));
         }
 
         bool Scanner::TransformToken(TokenType& tokenType, std::string_view token, std::string& result)
@@ -484,7 +513,7 @@ namespace nl
 
                 while (p < end)
                 {
-                    value = (value << 4) | m_aHexLookup[*p++];
+                    value = (value << 4) | HexTable[*p++];
                 }
 
                 char num[128];
@@ -516,6 +545,41 @@ namespace nl
             CloseHandle(hFile);
 
             return Scanner(std::move(data));
+        }
+
+        int Scanner::CalculateLines(const char* start, const char* end)
+        {
+            int line = 0;
+
+            const char* p = start;
+
+            while (p < end)
+            {
+                if (*p == '\r')
+                {
+                    if (p + 1 < end &&
+                        *(p + 1) == '\n')
+                    {
+                        p += 2;
+                        ++line;
+                        continue;
+                    }
+
+#if 1 // do we count just a single \r as a new line?
+                    ++line;
+#endif
+
+                    ++p;
+                    continue;
+                }
+
+                if (*p == '\n')
+                    ++line;
+
+                ++p;
+            }
+
+            return line;
         }
     }
 }
