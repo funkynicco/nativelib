@@ -5,6 +5,7 @@
 #include <NativeLib/Parsing/Context.h>
 
 #include <NativeLib/RAII/Shared.h>
+#include <NativeLib/Containers/Stack.h>
 
 #include <string>
 #include <stack>
@@ -57,7 +58,7 @@ namespace nl
             virtual bool TransformToken(TokenType& tokenType, std::string_view token, std::string& result);
 
         private:
-            std::stack<nl::Shared<Context>> m_contextStack;
+            nl::Stack<nl::Shared<Context>> m_contextStack;
 
             const Token m_endOfFileToken;
             const Token m_errorToken;

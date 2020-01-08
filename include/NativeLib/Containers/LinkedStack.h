@@ -5,10 +5,10 @@
 namespace nl
 {
     template <typename T>
-    class BaseStack
+    class BaseLinkedStack
     {
     protected:
-        BaseStack() :
+        BaseLinkedStack() :
             m_ptr(nullptr)
         {
         }
@@ -43,7 +43,7 @@ namespace nl
     };
 
     template <typename T>
-    class Stack : public BaseStack<T>
+    class LinkedStack : public BaseLinkedStack<T>
     {
     public:
         T* Pop()
@@ -63,7 +63,7 @@ namespace nl
     };
 
     template <typename T>
-    class SafeStack : public BaseStack<T>
+    class SafeLinkedStack : public BaseLinkedStack<T>
     {
     public:
         T* Pop()
