@@ -14,6 +14,10 @@
 
 // mutable string (it changes itself; for performance benefit in C++)
 
+// TODO: change to only have a char* in the class so it's compatible with printf
+// TODO: implement string_view and basic_ostream conversion for std::cout
+// TODO: most of the function definitions should be in a cpp, only keep templating ones in header
+
 namespace nl
 {
 	namespace string

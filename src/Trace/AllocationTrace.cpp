@@ -5,7 +5,7 @@
 #include <NativeLib/Helper.h>
 #include <NativeLib/Logger.h>
 
-#include <NativeLib/Containers/Stack.h>
+#include <NativeLib/Containers/LinkedStack.h>
 #include <NativeLib/Containers/Queue.h>
 
 #define __DBG_TRACING
@@ -102,7 +102,7 @@ namespace nl
             size_t Offset;
             size_t Length;
 
-            SafeStack<OverlappedBuffer>* Pool;
+            SafeLinkedStack<OverlappedBuffer>* Pool;
 
             OverlappedBuffer* prev;
             OverlappedBuffer* next;
@@ -117,11 +117,11 @@ namespace nl
             OverlappedEx* next;
         };
 
-        SafeStack<OverlappedEx> g_overlappedPool;
+        SafeLinkedStack<OverlappedEx> g_overlappedPool;
 
         void* g_overlappedBuffersMemoryBlock = nullptr;
-        SafeStack<OverlappedBuffer> g_overlappedBufferPool;
-        SafeStack<OverlappedBuffer> g_overlappedBufferPoolPriority;
+        SafeLinkedStack<OverlappedBuffer> g_overlappedBufferPool;
+        SafeLinkedStack<OverlappedBuffer> g_overlappedBufferPoolPriority;
 
         SRWLOCK g_sendBufferLock = SRWLOCK_INIT;
         Queue<OverlappedBuffer> g_sendBuffer;
@@ -151,7 +151,7 @@ namespace nl
         template <bool priority>
         OverlappedBuffer* AllocateOverlappedBuffer()
         {
-            SafeStack<OverlappedBuffer>* pool;
+            SafeLinkedStack<OverlappedBuffer>* pool;
             if constexpr (priority)
                 pool = &g_overlappedBufferPoolPriority;
             else

@@ -19,19 +19,34 @@ int main(int, char**)
 
     nl::parsing::Scanner scanner(R"(
 
-        1
-        3
-        
-
-
-        8
-        lel
+    {
+        "glossary": {
+            "title": "example glossary",
+		    "GlossDiv": {
+                "title": "S",
+			    "GlossList": {
+                    "GlossEntry": {
+                        "ID": "SGML",
+					    "SortAs": "SGML",
+					    "GlossTerm": "Standard Generalized Markup Language",
+					    "Acronym": "SGML",
+					    "Abbrev": "ISO 8879:1986",
+					    "GlossDef": {
+                            "para": "A meta-markup language, used to create markup languages such as DocBook.",
+						    "GlossSeeAlso": ["GML", "XML"]
+                        },
+					    "GlossSee": "markup"
+                    }
+                }
+            }
+        }
+    }
 
     )");
 
     while (auto token = scanner.Next())
     {
-        std::cout << nl::parsing::TokenTypeToString(token) << ": " << token << " (Line: " << token.GetLine() << ")" << std::endl;
+        std::cout << std::setw(11) << std::left << nl::parsing::TokenTypeToString(token) << " " << token << " (Line: " << token.GetLine() << ")" << std::endl;
     }
 
     return 0;

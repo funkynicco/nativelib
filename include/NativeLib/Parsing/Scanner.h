@@ -58,7 +58,7 @@ namespace nl
             virtual bool TransformToken(TokenType& tokenType, std::string_view token, std::string& result);
 
         private:
-            nl::Stack<nl::Shared<Context>> m_contextStack;
+            nl::Stack<nl::Shared<Context>, 4> m_contextStack;
 
             const Token m_endOfFileToken;
             const Token m_errorToken;

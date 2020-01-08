@@ -3,6 +3,7 @@
 #include <NativeLib/Parsing/Scanner.h>
 
 #include <NativeLib/Assert.h>
+#include <NativeLib/IO/File.h>
 
 // TODO: this parser does not yet support \n \t \" etc in string tokens due to using string_view
 
@@ -58,7 +59,7 @@ namespace nl
             m_endOfFileToken(0, TokenType::EndOfFile),
             m_errorToken(0, TokenType::Error)
         {
-            m_contextStack.push(nl::ConstructShared<Context>(str.data(), str.data() + str.length()));
+            m_contextStack.Push(nl::ConstructShared<Context>(str.data(), str.data() + str.length()));
             SaveContext(); // save a duplicate
         }
 
@@ -72,7 +73,7 @@ namespace nl
                 length = strlen(str);
 
             auto container = nl::ConstructShared<std::string>(str, length);
-            m_contextStack.push(nl::ConstructShared<Context>(container));
+            m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
 
@@ -81,7 +82,7 @@ namespace nl
             m_errorToken(0, TokenType::Error)
         {
             auto container = nl::ConstructShared<std::string>(str);
-            m_contextStack.push(nl::ConstructShared<Context>(container));
+            m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
 
@@ -90,7 +91,7 @@ namespace nl
             m_errorToken(0, TokenType::Error)
         {
             auto container = nl::ConstructShared<std::string>(std::move(str));
-            m_contextStack.push(nl::ConstructShared<Context>(container));
+            m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
 
@@ -168,7 +169,7 @@ namespace nl
 
         bool Scanner::SkipBlank()
         {
-            Context* const context = m_contextStack.top();
+            Context* const context = m_contextStack.GetTop();
             const char*& p = context->ViewBegin;
             const char*& end = context->ViewEnd;
 
@@ -185,7 +186,7 @@ namespace nl
 
         bool Scanner::SkipSingleComment()
         {
-            Context* const context = m_contextStack.top();
+            Context* const context = m_contextStack.GetTop();
             const char*& p = context->ViewBegin;
             const char*& end = context->ViewEnd;
 
@@ -218,7 +219,7 @@ namespace nl
 
         bool Scanner::SkipMultiComment()
         {
-            Context* const context = m_contextStack.top();
+            Context* const context = m_contextStack.GetTop();
             const char*& p = context->ViewBegin;
             const char*& end = context->ViewEnd;
 
@@ -240,7 +241,7 @@ namespace nl
 
         Token Scanner::Next()
         {
-            Context* const context = m_contextStack.top();
+            Context* const context = m_contextStack.GetTop();
             context->TempToken.clear();
 
             auto tokenType = TokenType::Error;
@@ -485,20 +486,20 @@ namespace nl
 
         void Scanner::SaveContext()
         {
-            m_contextStack.push(nl::ConstructShared<Context>(*m_contextStack.top()));
+            m_contextStack.Push(nl::ConstructShared<Context>(*m_contextStack.GetTop()));
         }
 
         void Scanner::RestoreContext()
         {
-            nl_assert_if_debug(m_contextStack.size() > 2); // must contain at least 3 since the 2 are for ResetContext
-            m_contextStack.pop();
+            nl_assert_if_debug(m_contextStack.GetCount() > 2); // must contain at least 3 since the 2 are for ResetContext
+            m_contextStack.Pop();
         }
 
         void Scanner::ResetContext()
         {
-            nl_assert_if_debug(m_contextStack.size() >= 2); // assert that the stack must contain at least 2 contexts
-            m_contextStack.pop();
-            m_contextStack.push(nl::ConstructShared<Context>(*m_contextStack.top()));
+            nl_assert_if_debug(m_contextStack.GetCount() >= 2); // assert that the stack must contain at least 2 contexts
+            m_contextStack.Pop();
+            m_contextStack.Push(nl::ConstructShared<Context>(*m_contextStack.GetTop()));
         }
 
         bool Scanner::TransformToken(TokenType& tokenType, std::string_view token, std::string& result)
@@ -529,20 +530,15 @@ namespace nl
 
         Scanner Scanner::FromFile(const char* filename)
         {
-            // TODO: implement more safe file i/o
-
-            HANDLE hFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (hFile == INVALID_HANDLE_VALUE)
+            auto file = nl::io::File::Open(filename, nl::io::CreateMode::OpenExisting, false);
+            if (!file)
                 throw std::exception("Could not open file");
 
-            LARGE_INTEGER liSize;
-            GetFileSizeEx(hFile, &liSize);
+            size_t fileSize = (size_t)file.GetSize();
 
-            std::string data((size_t)liSize.QuadPart, 0);
-
-            DWORD dw;
-            ReadFile(hFile, data.data(), (DWORD)liSize.QuadPart, &dw, nullptr);
-            CloseHandle(hFile);
+            std::string data(fileSize, 0);
+            if(file.Read(data.data(), fileSize)!=fileSize)
+                throw std::exception("read error");
 
             return Scanner(std::move(data));
         }
