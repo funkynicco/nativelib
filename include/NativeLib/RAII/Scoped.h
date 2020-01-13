@@ -13,33 +13,39 @@ namespace nl
     public:
         using Callback = std::function<void(TObject*)>;
 
-        inline Scoped() :
+        Scoped() :
             m_obj(nullptr),
             m_func(nullptr)
         {
         }
 
-        inline Scoped(TObject* obj, Callback func) :
+        Scoped(nullptr_t) :
+            m_obj(nullptr),
+            m_func(nullptr)
+        {
+        }
+
+        Scoped(TObject* obj, Callback func) :
             m_obj(obj),
             m_func(func)
         {
         }
 
-        inline Scoped(Scoped&& other) noexcept
+        Scoped(Scoped&& other) noexcept
         {
             m_obj = other.m_obj;
             m_func = other.m_func;
             other.m_obj = nullptr;
         }
 
-        inline Scoped(const Scoped&) = delete;
+        Scoped(const Scoped&) = delete;
 
-        inline ~Scoped()
+        ~Scoped()
         {
             Release();
         }
 
-        inline Scoped& operator =(Scoped&& other) noexcept
+        Scoped& operator =(Scoped&& other) noexcept
         {
             Release();
 
@@ -49,45 +55,45 @@ namespace nl
             return *this;
         }
 
-        inline Scoped& operator =(const Scoped&) = delete;
+        Scoped& operator =(const Scoped&) = delete;
 
-        inline TObject* get()
+        TObject* get()
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline const TObject* get() const
+        const TObject* get() const
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline operator TObject* ()
+        operator TObject* ()
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline operator const TObject* () const
+        operator const TObject* () const
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline TObject* operator ->()
+        TObject* operator ->()
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline const TObject* operator ->() const
+        const TObject* operator ->() const
         {
             nl_assert_if_debug(m_obj != nullptr);
             return m_obj;
         }
 
-        inline void Release()
+        void Release()
         {
             if (m_obj)
             {
@@ -96,12 +102,12 @@ namespace nl
             }
         }
 
-        inline void Unhook()
+        void Unhook()
         {
             m_obj = nullptr;
         }
 
-        inline TObject* Swap(TObject* newValue)
+        TObject* Swap(TObject* newValue)
         {
             TObject* temp = m_obj;
             m_obj = newValue;

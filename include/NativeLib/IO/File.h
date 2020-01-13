@@ -1,29 +1,18 @@
 #pragma once
 
 #include <NativeLib/IO/Stream.h>
+#include <NativeLib/SystemLayer/SystemLayer.h>
 
-#include <NativeLib/Platform/Windows.h>
+#include <NativeLib/Platform/Platform.h>
+#include <NativeLib/IO/IOEnum.h>
+
+#include <stdint.h>
+#include <string_view>
 
 namespace nl
 {
     namespace io
     {
-        enum class CreateMode
-        {
-            CreateNew,
-            CreateAlways,
-            OpenExisting,
-            OpenAlways,
-            TruncateExisting,
-        };
-
-        enum class SeekMode
-        {
-            Begin,
-            Current,
-            End
-        };
-
         class File
         {
         public:
@@ -38,21 +27,21 @@ namespace nl
             operator bool() const;
 
             bool IsOpen() const;
-            long long GetPosition() const;
-            long long GetSize() const;
+            int64_t GetPosition() const;
+            int64_t GetSize() const;
 
             void Close();
-            void Seek(SeekMode mode, long long offset);
+            bool Seek(SeekMode mode, int64_t offset);
             size_t Read(void* lp, size_t count);
             size_t Write(const void* lp, size_t count);
             
-            static File Open(const char* filename, CreateMode mode, bool writable = true);
+            static File Open(std::string_view filename, CreateMode mode, bool writable = true);
 
         protected:
-            File(HANDLE hFile);
+            File(systemlayer::FileHandle fp);
 
         private:
-            HANDLE m_hFile;
+            systemlayer::FileHandle m_fp;
         };
     }
 }

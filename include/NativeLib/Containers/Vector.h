@@ -3,12 +3,16 @@
 #include <NativeLib/Allocators.h>
 #include <NativeLib/Assert.h>
 #include <NativeLib/Exceptions.h>
+#include <NativeLib/Util.h>
 
 namespace nl
 {
-    template <typename T, size_t InitialSize>
+    template <typename T>
     class Vector
     {
+        static_assert(sizeof(T) <= 16384, "Too large stack size for vector!");
+        static constexpr size_t InitialSize = nl::util::Max<size_t>(128 / sizeof(T), 1);
+
     public:
         const size_t npos = (size_t)-1;
 
@@ -22,9 +26,21 @@ namespace nl
             {
             }
 
+            inline bool operator ==(const const_iterator& it) const
+            {
+                return m_uIndex == it.m_uIndex;
+            }
+
             inline bool operator !=(const const_iterator& it) const
             {
                 return m_uIndex != it.m_uIndex;
+            }
+
+            inline const_iterator& operator --()
+            {
+                nl_assert_if_debug(m_uIndex > 0);
+                --m_uIndex;
+                return *this;
             }
 
             inline const_iterator& operator ++()
@@ -34,10 +50,30 @@ namespace nl
                 return *this;
             }
 
+            inline const_iterator& operator +(size_t i)
+            {
+                nl_assert_if_debug(m_uIndex + i < m_vector.m_uCount);
+                m_uIndex += i;
+                return *this;
+            }
+
+            inline const_iterator& operator -(size_t i)
+            {
+                nl_assert_if_debug(m_uIndex - i < m_vector.m_uCount);
+                m_uIndex -= i;
+                return *this;
+            }
+
             inline const T& operator *() const
             {
                 nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 return m_vector.m_pArray[m_uIndex];
+            }
+
+            inline const T* operator ->() const
+            {
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
+                return &m_vector.m_pArray[m_uIndex];
             }
 
             inline size_t GetIndex() const { return m_uIndex; }
@@ -56,6 +92,16 @@ namespace nl
             {
             }
 
+            inline bool operator ==(const iterator& it) const
+            {
+                return m_uIndex == it.m_uIndex;
+            }
+
+            inline bool operator ==(const const_iterator& it) const
+            {
+                return m_uIndex == it.GetIndex();
+            }
+
             inline bool operator !=(const iterator& it) const
             {
                 return m_uIndex != it.m_uIndex;
@@ -72,6 +118,27 @@ namespace nl
                 ++m_uIndex;
                 return *this;
             }
+            
+            inline iterator& operator --()
+            {
+                nl_assert_if_debug(m_uIndex > 0);
+                --m_uIndex;
+                return *this;
+            }
+
+            inline iterator& operator +(size_t i)
+            {
+                nl_assert_if_debug(m_uIndex + i < m_vector.m_uCount);
+                m_uIndex += i;
+                return *this;
+            }
+
+            inline iterator& operator -(size_t i)
+            {
+                nl_assert_if_debug(m_uIndex - i < m_vector.m_uCount);
+                m_uIndex -= i;
+                return *this;
+            }
 
             inline T& operator *()
             {
@@ -79,10 +146,22 @@ namespace nl
                 return m_vector.m_pArray[m_uIndex];
             }
 
+            inline T* operator ->()
+            {
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
+                return &m_vector.m_pArray[m_uIndex];
+            }
+
             inline const T& operator *() const
             {
                 nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
                 return m_vector.m_pArray[m_uIndex];
+            }
+
+            inline const T* operator ->() const
+            {
+                nl_assert_if_debug(m_uIndex < m_vector.m_uCount);
+                return &m_vector.m_pArray[m_uIndex];
             }
 
             inline size_t GetIndex() const { return m_uIndex; }

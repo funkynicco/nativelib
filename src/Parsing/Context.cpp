@@ -13,10 +13,10 @@ namespace nl
             Reset();
         }
 
-        Context::Context(nl::Shared<std::string> container) noexcept :
+        Context::Context(nl::Shared<nl::String> container) noexcept :
             lpContainer(container),
-            DataBegin(container->data()),
-            DataEnd(container->data() + container->length())
+            DataBegin(container->c_str()),
+            DataEnd(container->c_str() + container->GetLength())
         {
             Reset();
         }
@@ -60,7 +60,7 @@ namespace nl
         void Context::SetTokenToTemp(nl::parsing::TokenType tokenType)
         {
             TokenBegin = TempToken.c_str();
-            TokenEnd = TokenBegin + TempToken.length();
+            TokenEnd = TokenBegin + TempToken.GetLength();
             TokenType = tokenType;
         }
 

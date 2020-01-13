@@ -2,6 +2,7 @@
 
 #include <NativeLib/Parsing/Util.h>
 #include <NativeLib/RAII/Shared.h>
+#include <NativeLib/String.h>
 
 namespace nl
 {
@@ -10,7 +11,7 @@ namespace nl
         struct Context
         {
             /*** constant variables ***/
-            nl::Shared<std::string> const lpContainer;
+            nl::Shared<nl::String> const lpContainer;
 
             const char* const DataBegin;
             const char* const DataEnd;
@@ -24,13 +25,13 @@ namespace nl
             const char* TokenEnd;
             TokenType TokenType;
 
-            int Line;
+            int32_t Line;
 
             // use only when a token needs to change value, ie \n in a string
-            std::string TempToken;
+            nl::String TempToken;
 
             Context(const char* dataBegin, const char* dataEnd) noexcept;
-            Context(nl::Shared<std::string> container) noexcept;
+            Context(nl::Shared<nl::String> container) noexcept;
             Context(const Context& context);
             
             ~Context();

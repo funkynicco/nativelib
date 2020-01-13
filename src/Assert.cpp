@@ -1,40 +1,35 @@
 #include "StdAfx.h"
 
 #include <NativeLib/Assert.h>
+#include <NativeLib/SystemLayer/SystemLayer.h>
 
-nl::assert::pfnAssertHandler& GetAssertHandlerPointer()
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#endif
+
+#include <csignal>
+
+namespace nl::assert
 {
-    static nl::assert::pfnAssertHandler ptr = nullptr;
-    return ptr;
-}
-
-void nl::assert::SetAssertHandler(nl::assert::pfnAssertHandler assertHandler)
-{
-    GetAssertHandlerPointer() = assertHandler;
-}
-
-void nl::assert::CallAssertHandler(const char* expression, const char* filename, int line, const char* function)
-{
-    Assert assert = {};
-    assert.Expression = expression;
-    assert.Filename = filename;
-    assert.Line = line;
-    assert.Function = function;
-
-    if (!GetAssertHandlerPointer())
+    void CallAssertHandler(const char* expression, const char* filename, int line, const char* function)
     {
-#ifdef _DEBUG
-#ifdef _WIN32
-        OutputDebugStringA("nl Assert handler not set\n");
-        DebugBreak();
-#else
-#error to be implemented
-#endif
-#endif
+        Assert assert = {};
+        assert.Expression = expression;
+        assert.Filename = filename;
+        assert.Line = line;
+        assert.Function = function;
 
-        exit(1);
-        return;
+        nl::systemlayer::GetSystemLayerFunctions()->AssertHandler(assert);
     }
 
-    GetAssertHandlerPointer()(assert);
+    void DebugBreak()
+    {
+#ifdef NL_PLATFORM_WINDOWS
+        ::DebugBreak();
+#endif
+
+#ifdef NL_PLATFORM_LINUX
+        raise(SIGTRAP);
+#endif
+    }
 }

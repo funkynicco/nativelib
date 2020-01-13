@@ -1,6 +1,7 @@
 #pragma once
 
 #include <NativeLib/Parsing/Util.h>
+#include <NativeLib/String.h>
 
 #include <ostream>
 
@@ -12,12 +13,12 @@ namespace nl
         {
         public:
             Token();
-            Token(int line, TokenType tokenType);
-            Token(int line, TokenType tokenType, std::string_view token);
+            Token(int32_t line, TokenType tokenType);
+            Token(int32_t line, TokenType tokenType, std::string_view token);
 
             operator TokenType() const;
             operator std::string_view() const;
-            operator std::string() const;
+            operator nl::String() const;
             operator bool() const;
 
             bool operator ==(std::string_view value) const;
@@ -28,10 +29,10 @@ namespace nl
             const char* data() const;
             size_t length() const;
 
-            bool GetToken(int* pnValue) const;
-            bool GetToken(unsigned int* pnValue) const;
-            bool GetToken(__int64* pnValue) const;
-            bool GetToken(unsigned __int64* pnValue) const;
+            bool GetToken(int32_t* pnValue) const;
+            bool GetToken(uint32_t* pnValue) const;
+            bool GetToken(int64_t* pnValue) const;
+            bool GetToken(uint64_t* pnValue) const;
             bool GetToken(float* pnValue) const;
             bool GetToken(double* pnValue) const;
 
@@ -42,12 +43,12 @@ namespace nl
             bool IsHex() const;
             bool IsFloat() const;
 
-            int GetLine() const;
+            int32_t GetLine() const;
 
         private:
             TokenType m_tokenType;
             std::string_view m_token;
-            int m_line;
+            int32_t m_line;
         };
 
         template <class _Elem, class _Traits>

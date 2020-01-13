@@ -1,6 +1,6 @@
 #pragma once
 
-#include <NativeLib/Platform/Windows.h>
+#include <NativeLib/Threading/ReadWriteLock.h>
 
 namespace nl
 {
@@ -45,51 +45,52 @@ namespace nl
     template <typename T>
     class LinkedStack : public BaseLinkedStack<T>
     {
+        typedef BaseLinkedStack<T> super;
+
     public:
         T* Pop()
         {
-            return _Pop();
+            return super::_Pop();
         }
 
         bool TryPop(T** ptr)
         {
-            return _TryPop(ptr);
+            return super::_TryPop(ptr);
         }
 
         void Push(T* ptr)
         {
-            _Push(ptr);
+            super::_Push(ptr);
         }
     };
 
     template <typename T>
     class SafeLinkedStack : public BaseLinkedStack<T>
     {
+        typedef BaseLinkedStack<T> super;
+
     public:
         T* Pop()
         {
-            AcquireSRWLockExclusive(&m_lock);
-            T* ptr = _Pop();
-            ReleaseSRWLockExclusive(&m_lock);
+            auto lock = nl::threading::ReadWriteLockScope(&m_lock, true);
+            T* ptr = super::_Pop();
             return ptr;
         }
 
         bool TryPop(T** ptr)
         {
-            AcquireSRWLockExclusive(&m_lock);
-            bool res = _TryPop(ptr);
-            ReleaseSRWLockExclusive(&m_lock);
+            auto lock = nl::threading::ReadWriteLockScope(&m_lock, true);
+            bool res = super::_TryPop(ptr);
             return res;
         }
 
         void Push(T* ptr)
         {
-            AcquireSRWLockExclusive(&m_lock);
-            _Push(ptr);
-            ReleaseSRWLockExclusive(&m_lock);
+            auto lock = nl::threading::ReadWriteLockScope(&m_lock, true);
+            super::_Push(ptr);
         }
 
     private:
-        SRWLOCK m_lock = SRWLOCK_INIT;
+        nl::threading::ReadWriteLock m_lock;
     };
 }

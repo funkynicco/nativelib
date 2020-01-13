@@ -7,12 +7,12 @@ namespace nl
     namespace io
     {
         File::File() :
-            m_hFile(INVALID_HANDLE_VALUE)
+            m_fp(0)
         {
         }
 
-        File::File(HANDLE hFile) :
-            m_hFile(hFile)
+        File::File(systemlayer::FileHandle fp) :
+            m_fp(fp)
         {
         }
 
@@ -23,120 +23,51 @@ namespace nl
 
         File::operator bool() const
         {
-            return m_hFile != INVALID_HANDLE_VALUE;
+            return m_fp != 0;
         }
 
         bool File::IsOpen() const
         {
-            return m_hFile != INVALID_HANDLE_VALUE;
+            return m_fp != 0;
         }
 
-        long long File::GetPosition() const
+        int64_t File::GetPosition() const
         {
-            LARGE_INTEGER li = {};
-            SetFilePointerEx(m_hFile, {}, &li, FILE_CURRENT);
-            return li.QuadPart;
+            return systemlayer::GetSystemLayerFunctions()->FileGetPosition(m_fp);
         }
 
-        long long File::GetSize() const
+        int64_t File::GetSize() const
         {
-            LARGE_INTEGER li = {};
-            GetFileSizeEx(m_hFile, &li);
-            return li.QuadPart;
+            return systemlayer::GetSystemLayerFunctions()->FileGetSize(m_fp);
         }
 
         void File::Close()
         {
-            if (m_hFile != INVALID_HANDLE_VALUE)
+            if (m_fp != 0)
             {
-                CloseHandle(m_hFile);
-                m_hFile = INVALID_HANDLE_VALUE;
+                systemlayer::GetSystemLayerFunctions()->FileClose(m_fp);
+                m_fp = 0;
             }
         }
 
-        void File::Seek(SeekMode mode, long long offset)
+        bool File::Seek(SeekMode mode, int64_t offset)
         {
-            LARGE_INTEGER li;
-            li.QuadPart = offset;
-
-            DWORD dwMoveMethod = FILE_BEGIN;
-            switch (mode)
-            {
-            case SeekMode::Begin:
-                dwMoveMethod = FILE_BEGIN;
-                break;
-            case SeekMode::Current:
-                dwMoveMethod = FILE_CURRENT;
-                break;
-            case SeekMode::End:
-                dwMoveMethod = FILE_END;
-                break;
-            }
-
-            SetFilePointerEx(m_hFile, li, nullptr, dwMoveMethod);
+            return systemlayer::GetSystemLayerFunctions()->FileSeek(m_fp, offset, mode);
         }
 
         size_t File::Read(void* lp, size_t count)
         {
-            size_t remaining = count;
-            while (remaining != 0)
-            {
-                DWORD dw;
-                if (!ReadFile(m_hFile, lp, remaining, &dw, nullptr) ||
-                    dw == 0)
-                    break;
-
-                lp = (unsigned char*)lp + dw;
-                remaining -= dw;
-            }
-
-            return count - remaining;
+            return systemlayer::GetSystemLayerFunctions()->FileRead(m_fp, lp, count);
         }
 
         size_t File::Write(const void* lp, size_t count)
         {
-            size_t remaining = count;
-            while (remaining != 0)
-            {
-                DWORD dw;
-                if (!WriteFile(m_hFile, lp, remaining, &dw, nullptr) ||
-                    dw == 0)
-                    break;
-
-                lp = (const unsigned char*)lp + dw;
-                remaining -= dw;
-            }
-
-            return count - remaining;
+            return systemlayer::GetSystemLayerFunctions()->FileWrite(m_fp, lp, count);            
         }
 
-        File File::Open(const char* filename, CreateMode mode, bool writable)
+        File File::Open(std::string_view filename, CreateMode mode, bool writable)
         {
-            DWORD dwDesiredAccess = GENERIC_READ;
-            if (writable)
-                dwDesiredAccess |= GENERIC_WRITE;
-
-            DWORD dwCreationDisposition = 0;
-            switch (mode)
-            {
-            case CreateMode::CreateNew:
-                dwCreationDisposition = CREATE_NEW;
-                break;
-            case CreateMode::CreateAlways:
-                dwCreationDisposition = CREATE_ALWAYS;
-                break;
-            case CreateMode::OpenExisting:
-                dwCreationDisposition = OPEN_EXISTING;
-                break;
-            case CreateMode::OpenAlways:
-                dwCreationDisposition = OPEN_ALWAYS;
-                break;
-            case CreateMode::TruncateExisting:
-                dwCreationDisposition = TRUNCATE_EXISTING;
-                break;
-            }
-
-            return File(CreateFileA(filename, dwDesiredAccess, FILE_SHARE_READ, nullptr, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr));
+            return File(systemlayer::GetSystemLayerFunctions()->FileOpen(nl::String(filename), mode, writable));
         }
     }
 }

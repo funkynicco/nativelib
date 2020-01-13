@@ -8,6 +8,8 @@
 
 #include "JsonInline.inl"
 
+#include <NativeLib/Allocators.h>
+
  //DefinePool(JsonArray, 8);
 
 namespace nl
@@ -16,29 +18,25 @@ namespace nl
     {
         for (auto it : m_items)
         {
-            delete it;
+            nl::memory::Destroy(it);
         }
     }
 
-    bool JsonArray::Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors)
+    bool JsonArray::Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
     {
-        char error_str[256];
-
         if (json[i] != '[')
         {
-            sprintf_s(error_str, __FUNCTION__ " - Json at offset %ld is not an array", i);
-            parse_errors.push_back(error_str);
+            parse_errors.Add(nl::String::Format("Json at offset {} is not an array", i));
             return false;
         }
-
+        
         ++i;
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             Json_SkipWhitespace(json, i);
-            if (i >= json.length())
+            if (i >= json.GetLength())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
-                parse_errors.push_back(error_str);
+                parse_errors.Add(nl::String::Format("EOF at {}", i));
                 return false;
             }
 
@@ -57,17 +55,16 @@ namespace nl
             if (!value)
                 return false;
 
-            m_items.push_back(value);
+            m_items.Add(value);
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
-        parse_errors.push_back(error_str);
+        parse_errors.Add(nl::String::Format("EOF at {}", i));
         return false;
     }
 
     void JsonArray::AddNull()
     {
-        AddBase(new JsonNull);
+        AddBase(nl::memory::ConstructThrow<JsonNull>());
     }
 
     void JsonArray::AddObject(JsonBase* obj)
@@ -77,42 +74,42 @@ namespace nl
 
     JsonObject* JsonArray::AddObject()
     {
-        auto obj = new JsonObject;
+        auto obj = nl::memory::ConstructThrow<JsonObject>();
         AddBase(obj);
         return obj;
     }
 
     JsonArray* JsonArray::AddArray()
     {
-        auto obj = new JsonArray;
+        auto obj = nl::memory::ConstructThrow<JsonArray>();
         AddBase(obj);
         return obj;
     }
 
     JsonBoolean* JsonArray::AddBoolean(bool value)
     {
-        auto obj = new JsonBoolean(value);
+        auto obj = nl::memory::ConstructThrow<JsonBoolean>(value);
         AddBase(obj);
         return obj;
     }
 
     JsonString* JsonArray::AddString(const char* value)
     {
-        auto obj = new JsonString(value);
+        auto obj = nl::memory::ConstructThrow<JsonString>(value);
         AddBase(obj);
         return obj;
     }
 
-    JsonNumber* JsonArray::AddNumber(long long value)
+    JsonNumber* JsonArray::AddNumber(int64_t value)
     {
-        auto obj = new JsonNumber(value);
+        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
         AddBase(obj);
         return obj;
     }
 
     JsonNumber* JsonArray::AddNumber(double value)
     {
-        auto obj = new JsonNumber(value);
+        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
         AddBase(obj);
         return obj;
     }

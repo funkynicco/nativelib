@@ -8,34 +8,34 @@
 
 #include "JsonInline.inl"
 
+#include <NativeLib/Allocators.h>
+
 namespace nl
 {
-    std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
+    nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
     {
-        std::string json = pszJson;
+        nl::String json = pszJson;
 
         size_t i = 0;
         Json_SkipWhitespace(json, i);
 
-        if (i >= json.length())
+        if (i >= json.GetLength())
         {
-            char error_str[256];
-            sprintf_s(error_str, __FUNCTION__ " - EOF at %ld", i);
-            parse_errors.push_back(error_str);
-            return NULL;
+            parse_errors.Add(nl::String::Format("EOF at {}", i));
+            return nullptr;
         }
 
-        std::unique_ptr<JsonBase> obj;
+        nl::Scoped<JsonBase> obj;
 
         if (json[i] == '{')
         {
-            obj = std::unique_ptr<JsonBase>(new JsonObject);
+            obj = nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonObject>());
             if (!static_cast<JsonObject*>(obj.get())->Read(json, i, parse_errors))
                 return nullptr;
         }
         else if (json[i] == '[')
         {
-            obj = std::unique_ptr<JsonBase>(new JsonArray);
+            obj = nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonArray>());
             if (!static_cast<JsonArray*>(obj.get())->Read(json, i, parse_errors))
                 return nullptr;
         }
@@ -43,49 +43,49 @@ namespace nl
         return obj;
     }
 
-    inline bool JsonGenerateProcessBase(std::string& output, const JsonBase* pJson)
+    inline bool JsonGenerateProcessBase(nl::String& output, const JsonBase* pJson)
     {
         if (pJson->GetType() == JsonType::Boolean)
         {
-            output.append(static_cast<const JsonBoolean*>(pJson)->GetValue() ? "true" : "false");
+            output.Append(static_cast<const JsonBoolean*>(pJson)->GetValue() ? "true" : "false");
         }
         else if (pJson->GetType() == JsonType::String)
         {
-            const std::string& s = static_cast<const JsonString*>(pJson)->GetValue();
-            output.reserve(output.capacity() + s.length() + 2);
-            output.push_back('"');
-            for (size_t i = 0; i < s.length(); ++i)
+            const nl::String& s = static_cast<const JsonString*>(pJson)->GetValue();
+            output.EnsureCapacity(output.GetCapacity() + s.GetLength() + 2);
+            output.Append('"');
+            for (size_t i = 0; i < s.GetLength(); ++i)
             {
                 char ch = s[i];
                 switch (ch)
                 {
                 case '\\':
-                    output.push_back('\\');
-                    output.push_back('\\');
+                    output.Append('\\');
+                    output.Append('\\');
                     break;
                 case '"':
-                    output.push_back('\\');
-                    output.push_back('"');
+                    output.Append('\\');
+                    output.Append('"');
                     break;
                 case '\t':
-                    output.push_back('\\');
-                    output.push_back('t');
+                    output.Append('\\');
+                    output.Append('t');
                     break;
                 case '\r':
-                    output.push_back('\\');
-                    output.push_back('r');
+                    output.Append('\\');
+                    output.Append('r');
                     break;
                 case '\n':
-                    output.push_back('\\');
-                    output.push_back('n');
+                    output.Append('\\');
+                    output.Append('n');
                     break;
                 default:
-                    output.push_back(ch);
+                    output.Append(ch);
                     break;
                 }
             }
 
-            output.push_back('"');
+            output.Append('"');
         }
         else if (pJson->GetType() == JsonType::Number)
         {
@@ -95,51 +95,50 @@ namespace nl
             if (num->IsDouble())
                 sprintf_s(buffer, "%lf", num->GetDouble());
             else
-                sprintf_s(buffer, "%I64d", num->GetValue());
+                sprintf_s(buffer, "%lld", num->GetValue());
 
-            output.append(buffer);
+            output.Append(buffer);
         }
         else if (pJson->GetType() == JsonType::Array)
         {
-            output.push_back('[');
+            output.Append('[');
 
             auto pArray = static_cast<const JsonArray*>(pJson);
             for (size_t i = 0; i < pArray->GetCount(); ++i)
             {
                 if (i > 0)
-                    output.push_back(',');
+                    output.Append(',');
 
                 if (!JsonGenerateProcessBase(output, pArray->GetItem(i)))
                     return false;
             }
 
-            output.push_back(']');
+            output.Append(']');
         }
         else if (pJson->GetType() == JsonType::Object)
         {
-            output.push_back('{');
+            output.Append('{');
 
-            int n = 0;
-            auto members = static_cast<const JsonObject*>(pJson)->GetMembers();
-            for (auto it = members.cbegin(); it != members.cend(); ++it)
+            int32_t n = 0;
+            for (auto it : static_cast<const JsonObject*>(pJson)->GetMembers())
             {
                 if (n++ > 0)
-                    output.push_back(',');
+                    output.Append(',');
 
-                output.push_back('"');
-                output.append(it->first.c_str());
-                output.push_back('"');
-                output.push_back(':');
+                output.Append('"');
+                output.Append(it.first.c_str());
+                output.Append('"');
+                output.Append(':');
 
-                if (!JsonGenerateProcessBase(output, it->second))
+                if (!JsonGenerateProcessBase(output, it.second))
                     return false;
             }
 
-            output.push_back('}');
+            output.Append('}');
         }
         else if (pJson->GetType() == JsonType::Null)
         {
-            output.append("null");
+            output.Append("null");
         }
         else
             return false;
@@ -147,29 +146,29 @@ namespace nl
         return true;
     }
 
-    bool GenerateJsonString(std::string& output, const JsonBase* pJson)
+    bool GenerateJsonString(nl::String& output, const JsonBase* pJson)
     {
-        output.clear();
+        output.Clear();
 
         return JsonGenerateProcessBase(output, pJson); // recursive
     }
 
-    std::unique_ptr<JsonBase> CreateJsonObject(JsonType type)
+    nl::Scoped<JsonBase> CreateJsonObject(JsonType type)
     {
         switch (type)
         {
         case JsonType::Null:
-            return std::unique_ptr<JsonBase>(new JsonNull);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonNull>());
         case JsonType::Object:
-            return std::unique_ptr<JsonBase>(new JsonObject);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonObject>());
         case JsonType::Array:
-            return std::unique_ptr<JsonBase>(new JsonArray);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonArray>());
         case JsonType::String:
-            return std::unique_ptr<JsonBase>(new JsonString);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonString>());
         case JsonType::Number:
-            return std::unique_ptr<JsonBase>(new JsonNumber);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonNumber>());
         case JsonType::Boolean:
-            return std::unique_ptr<JsonBase>(new JsonBoolean);
+            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonBoolean>());
         }
 
         throw UnsupportedJsonTypeException();

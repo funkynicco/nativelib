@@ -1,21 +1,36 @@
 #include "StdAfx.h"
 
-void* AllocateCallback(size_t size) { return malloc(size); }
-void* ReallocateCallback(void* ptr, size_t size) { return realloc(ptr, size); }
-void FreeCallback(void* ptr) { return free(ptr); }
+#include <NativeLib/SystemLayer/SystemLayer.h>
+
+#pragma comment(lib, "DbgHelp.lib")
 
 void AssertHandler(const nl::assert::Assert& assert)
 {
-    auto message = nl::LargeString<>::Format("Expression: {}\nFunction: {}\nFile: {}:{}", assert.Expression, assert.Function, assert.Filename, assert.Line);
+    auto message = nl::String::Format("Expression: {}\nFunction: {}\nFile: {}:{}", assert.Expression, assert.Function, assert.Filename, assert.Line);
     OutputDebugStringA(message);
     OutputDebugStringA("\n");
     MessageBoxA(nullptr, message, "Assert failed", MB_OK | MB_ICONERROR);
 }
 
+bool SetupNativeLibSystemLayer()
+{
+    nl::systemlayer::SystemLayerFunctions functions = {};
+    if (!nl::systemlayer::GetDefaultSystemLayerFunctions(&functions))
+        return false;
+    
+    functions.AssertHandler = AssertHandler;
+    
+    nl::systemlayer::SetSystemLayerFunctions(&functions);
+    return true;
+}
+
 int main(int, char**)
 {
-    nl::assert::SetAssertHandler(AssertHandler);
-    nl::memory::SetMemoryManagement(AllocateCallback, ReallocateCallback, FreeCallback);
+    if (!SetupNativeLibSystemLayer())
+    {
+        std::cout << "Setup NativeLib system layer failed!" << std::endl;
+        return 1;
+    }
 
     nl::parsing::Scanner scanner(R"(
 

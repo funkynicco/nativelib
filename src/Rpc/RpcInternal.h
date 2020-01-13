@@ -1,5 +1,14 @@
 #pragma once
 
+#ifdef NL_PLATFORM_WINDOWS
+
+#include <NativeLib/Allocators.h>
+#include <NativeLib/Threading/Interlocked.h>
+
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#endif
+
 namespace nl
 {
     namespace rpc
@@ -15,7 +24,7 @@ namespace nl
         class PipeClient
         {
         public:
-            PipeClient(HANDLE hPipe, LONG lClientId) :
+            PipeClient(HANDLE hPipe, int32_t lClientId) :
                 m_hPipe(hPipe),
                 m_lReferences(1),
                 m_lClientId(lClientId)
@@ -29,13 +38,13 @@ namespace nl
 
             void AddRef()
             {
-                InterlockedIncrement(&m_lReferences);
+                nl::threading::Interlocked::Increment(&m_lReferences);
             }
 
             void Release()
             {
-                if (InterlockedDecrement(&m_lReferences) == 0)
-                    delete this;
+                if (nl::threading::Interlocked::Decrement(&m_lReferences) == 0)
+                    nl::memory::Destroy(this);
             }
 
             HANDLE GetPipe() const { return m_hPipe; }
@@ -43,10 +52,10 @@ namespace nl
             LONG GetId() const { return m_lClientId; }
 
         private:
-            LONG m_lReferences;
-            HANDLE m_hPipe;
+            int32_t m_lReferences;
+            void* m_hPipe;
             DataBuffer m_buffer;
-            LONG m_lClientId;
+            int32_t m_lClientId;
         };
 
         struct OverlappedEx
@@ -58,3 +67,5 @@ namespace nl
         };
     }
 }
+
+#endif

@@ -14,8 +14,8 @@ namespace nl
 
         typedef void(*pfnAssertHandler)(const Assert& assert);
 
-        void SetAssertHandler(pfnAssertHandler assertHandler);
         void CallAssertHandler(const char* expression, const char* filename, int line, const char* function);
+        void DebugBreak();
     }
 }
 
@@ -23,7 +23,7 @@ namespace nl
     if (!(__expr)) \
     { \
         nl::assert::CallAssertHandler(#__expr, __FILE__, __LINE__, __FUNCTION__); \
-        DebugBreak(); \
+        nl::assert::DebugBreak(); \
     } \
     __analysis_assume(__expr)
 

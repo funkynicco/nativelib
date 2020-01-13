@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "DataBuffer.h"
 
+#include <NativeLib/SystemLayer/SystemLayer.h>
+
 namespace nl
 {
     namespace rpc
@@ -16,7 +18,7 @@ namespace nl
         DataBuffer::~DataBuffer()
         {
             if (m_buffer)
-                free(m_buffer);
+                nl::systemlayer::GetSystemLayerFunctions()->FreeHeapMemory(m_buffer);
         }
 
         DataBuffer::DataBuffer(DataBuffer&& buffer) noexcept
@@ -49,7 +51,7 @@ namespace nl
         DataBuffer& DataBuffer::Read(void* lp, size_t length)
         {
             if (m_offset + length > m_length)
-                throw std::exception("EOF trying to read outside stream");
+                throw EndOfFileException();
 
             memcpy(lp, m_buffer + m_offset, length);
             m_offset += length;
@@ -68,36 +70,36 @@ namespace nl
             return *this;
         }
 
-        std::string DataBuffer::ReadString()
+        nl::String DataBuffer::ReadString()
         {
-            int length;
+            int32_t length;
             *this >> length;
 
             thread_local char buf[4096];
             char* p = buf;
             if (length + 1 > sizeof(buf))
-                p = (char*)malloc(length + 1);
+                p = (char*)nl::systemlayer::GetSystemLayerFunctions()->AllocateHeapMemory(length + 1);
 
             Read(p, length);
 
-            std::string result(p, length);
+            auto result = nl::String(p, length);
 
             if (p != buf)
-                free(p);
+                nl::systemlayer::GetSystemLayerFunctions()->FreeHeapMemory(p);
 
             return result;
         }
 
-        DataBuffer& DataBuffer::WriteString(const std::string& str)
+        DataBuffer& DataBuffer::WriteString(const std::string_view& str)
         {
-            *this << (int)str.length();
+            *this << (int32_t)str.length();
             return Write(str.data(), str.length());
         }
 
         DataBuffer& DataBuffer::Delete(size_t count)
         {
             if (count > m_length)
-                throw std::exception("EOF while trying to delete bytes");
+                throw EndOfFileException();
 
             memmove(m_buffer, m_buffer + count, m_length - count);
             m_length -= count;
@@ -124,9 +126,9 @@ namespace nl
                 newCapacity *= 2;
 
             if (m_buffer)
-                m_buffer = (char*)realloc(m_buffer, newCapacity);
+                m_buffer = (char*)nl::systemlayer::GetSystemLayerFunctions()->ReallocateHeapMemory(m_buffer, newCapacity);
             else
-                m_buffer = (char*)malloc(newCapacity);
+                m_buffer = (char*)nl::systemlayer::GetSystemLayerFunctions()->AllocateHeapMemory(newCapacity);
 
             m_capacity = newCapacity;
         }

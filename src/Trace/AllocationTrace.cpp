@@ -1,12 +1,22 @@
 #include "StdAfx.h"
 
+#ifdef NL_PLATFORM_WINDOWS
+
 #include <NativeLib/Trace/AllocationTrace.h>
-#include <NativeLib/Platform/DbgHelpWin.h>
 #include <NativeLib/Helper.h>
 #include <NativeLib/Logger.h>
 
 #include <NativeLib/Containers/LinkedStack.h>
 #include <NativeLib/Containers/Queue.h>
+
+#include <NativeLib/SystemLayer/SystemLayer.h>
+#include <NativeLib/Allocators.h>
+#include <NativeLib/Threading/Interlocked.h>
+
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#include <DbgHelp.h>
+#endif
 
 #define __DBG_TRACING
 
@@ -49,7 +59,7 @@ namespace nl
 
         } g_callstackCapturing;
 
-        LONGLONG g_lNextPacketIndex = 0;
+        int64_t g_lNextPacketIndex = 0;
 
 #pragma pack(push, 1)
         struct StackInfo
@@ -203,12 +213,12 @@ namespace nl
 
             for (int i = 0; i < 2; ++i)
             {
-                g_overlappedPool.Push(new OverlappedEx);
+                g_overlappedPool.Push(nl::memory::ConstructThrow<OverlappedEx>());
             }
 
             const size_t NumberOfBuffersToAllocate = 16384;
             const size_t NumberOfPriorityBuffersToAllocate = 64;
-            g_overlappedBuffersMemoryBlock = VirtualAlloc(nullptr, sizeof(OverlappedBuffer) * (NumberOfBuffersToAllocate + NumberOfPriorityBuffersToAllocate), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            g_overlappedBuffersMemoryBlock = nl::systemlayer::GetSystemLayerFunctions()->AllocateVirtualMemory(sizeof(OverlappedBuffer) * (NumberOfBuffersToAllocate + NumberOfPriorityBuffersToAllocate));
             OverlappedBuffer* lpBuffersMemory = static_cast<OverlappedBuffer*>(g_overlappedBuffersMemoryBlock);
             for (size_t i = 0; i < NumberOfBuffersToAllocate; ++i)
             {
@@ -278,10 +288,10 @@ namespace nl
             OverlappedEx* overlapped;
             while (g_overlappedPool.TryPop(&overlapped))
             {
-                delete overlapped;
+                nl::memory::Destroy(overlapped);
             }
 
-            VirtualFree(g_overlappedBuffersMemoryBlock, 0, MEM_RELEASE);
+            nl::systemlayer::GetSystemLayerFunctions()->FreeVirtualMemory(g_overlappedBuffersMemoryBlock);
         }
 
         void SendBuffer(OverlappedBuffer* lpBuffer, bool prioritized = false)
@@ -301,7 +311,7 @@ namespace nl
                 overlapped->lpBuffer = g_sendBuffer.PopHead();
 
                 PipeCommand* cmd = reinterpret_cast<PipeCommand*>(overlapped->lpBuffer);
-                cmd->PacketIndex = InterlockedIncrement64(&g_lNextPacketIndex);
+                cmd->PacketIndex = nl::threading::Interlocked::Increment(&g_lNextPacketIndex);
 
                 if (!WriteFile(g_hPipe, overlapped->lpBuffer->Buffer + overlapped->lpBuffer->Offset, (DWORD)overlapped->lpBuffer->Length, nullptr, &overlapped->Overlapped))
                 {
@@ -334,7 +344,7 @@ namespace nl
             ReleaseSRWLockExclusive(&g_sendBufferLock);
         }
 
-        __declspec(noinline) void CaptureCallstack(ULONG skip, char* ptr)
+        NL_NOINLINE void CaptureCallstack(ULONG skip, char* ptr)
         {
             LPVOID aStack[32];
             auto frames = g_callstackCapturing.CaptureStackBackTracePtr(1 + skip, ARRAYSIZE(aStack), aStack, nullptr);
@@ -353,7 +363,7 @@ namespace nl
             *p = 0;
         }
 
-        __declspec(noinline) void AddAllocation(const char* filename, int line, const char* function, void* ptr, size_t sizeOfPtrData)
+        NL_NOINLINE void AddAllocation(const char* filename, int32_t line, const char* function, void* ptr, size_t sizeOfPtrData)
         {
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 return;
@@ -392,7 +402,7 @@ namespace nl
             //ReleaseSRWLockExclusive(&g_entryLock);
         }
 
-        __declspec(noinline) void RemoveAllocation(void* ptr)
+        NL_NOINLINE void RemoveAllocation(void* ptr)
         {
             if (g_hPipe == INVALID_HANDLE_VALUE)
                 return;
@@ -635,7 +645,7 @@ namespace nl
                         if (overlapped->lpBuffer)
                         {
                             PipeCommand* cmd = reinterpret_cast<PipeCommand*>(overlapped->lpBuffer);
-                            cmd->PacketIndex = InterlockedIncrement64(&g_lNextPacketIndex);
+                            cmd->PacketIndex = nl::threading::Interlocked::Increment(&g_lNextPacketIndex);
 
                             // write to pipe first, then release lock
                             if (!WriteFile(g_hPipe, overlapped->lpBuffer->Buffer + overlapped->lpBuffer->Offset, (DWORD)overlapped->lpBuffer->Length, nullptr, &overlapped->Overlapped))
@@ -675,3 +685,5 @@ namespace nl
         }
     }
 }
+
+#endif

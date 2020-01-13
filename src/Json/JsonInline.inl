@@ -4,11 +4,13 @@
 
 #pragma once
 
+#include <NativeLib/Util.h>
+
 namespace nl
 {
-    inline void Json_SkipWhitespace(const std::string& json, size_t& i)
+    inline void Json_SkipWhitespace(const nl::String& json, size_t& i)
     {
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             auto skip = false;
 
@@ -34,13 +36,13 @@ namespace nl
         return ch >= '0' && ch <= '9';
     }
 
-    inline bool Json_ReadNumber(__int64* pNumber, const std::string& json, size_t& i)
+    inline bool Json_ReadNumber(int64_t* pNumber, const nl::String& json, size_t& i)
     {
-        __int64 value = 0LL;
+        int64_t value = 0LL;
         auto first = true;
         auto isNegative = false;
 
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             if (first &&
                 json[i] == '-' &&
@@ -65,7 +67,7 @@ namespace nl
             if (!first)
                 value *= 10;
 
-            value += (unsigned char)json[i++] - (unsigned char)'0';
+            value += (uint8_t)json[i++] - (uint8_t)'0';
 
             first = false;
         }
@@ -77,16 +79,16 @@ namespace nl
         return true;
     }
 
-    inline bool Json_ReadDouble(double* pNumber, const std::string& json, size_t& i)
+    inline bool Json_ReadDouble(double* pNumber, const nl::String& json, size_t& i)
     {
         double value = 0;
         auto first = true;
         auto isNegative = false;
 
         bool isFractional = false;
-        int fractions = 0;
+        int32_t fractions = 0;
 
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             if (first &&
                 json[i] == '-' &&
@@ -111,7 +113,7 @@ namespace nl
             if (!first)
                 value *= 10;
 
-            value += (unsigned char)json[i++] - (unsigned char)'0';
+            value += (uint8_t)json[i++] - (uint8_t)'0';
             if (isFractional)
                 ++fractions;
 
@@ -121,7 +123,7 @@ namespace nl
         if (first)
             return false;
 
-        value = value / pow(10, fractions);
+        value = value / nl::util::Pow(10, fractions);
 
         if (isNegative)
             *pNumber = -value;
@@ -130,26 +132,23 @@ namespace nl
         return true;
     }
 
-    inline bool Json_ReadString(std::string& sb, const std::string& json, size_t& i, std::vector<std::string>& parse_errors) // expects "\"...\""
+    inline bool Json_ReadString(nl::String& sb, const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors) // expects "\"...\""
     {
-        char error_str[256];
         if (json[i] != '"')
         {
-            sprintf_s(error_str, __FUNCTION__ " - Json at offset %lu is not a string", (unsigned int)i);
-            parse_errors.push_back(error_str);
+            parse_errors.Add(nl::String::Format("Json at offset {} is not a string", i));
             return false;
         }
 
         ++i;
         auto start = i;
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             if (json[i] == '\\')
             {
-                if (i + 1 >= json.length())
+                if (i + 1 >= json.GetLength())
                 {
-                    sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-                    parse_errors.push_back(error_str);
+                    parse_errors.Add(nl::String::Format("EOF at {}", i));
                     return false;
                 }
 
@@ -159,27 +158,26 @@ namespace nl
                 case '"':
                 case '\\':
                 case '/':
-                    sb.push_back(ch);
+                    sb.Append(ch);
                     break;
                 case 'b':
-                    sb.push_back('\b');
+                    sb.Append('\b');
                     break;
                 case 'f':
-                    sb.push_back('\f');
+                    sb.Append('\f');
                     break;
                 case 'n':
-                    sb.push_back('\n');
+                    sb.Append('\n');
                     break;
                 case 'r':
-                    sb.push_back('\r');
+                    sb.Append('\r');
                     break;
                 case 't':
-                    sb.push_back('\t');
+                    sb.Append('\t');
                     break;
                 case 'u':
                 {
-                    sprintf_s(error_str, __FUNCTION__ " - \\u0000 type characters are not supported at offset %lu", (unsigned int)i);
-                    parse_errors.push_back(error_str);
+                    parse_errors.Add(nl::String::Format("\\u0000 type characters are not supported at offset {}", i));
                     return false;
                 }
                 }
@@ -192,54 +190,51 @@ namespace nl
                 return true;
             }
 
-            sb.push_back(json[i++]);
+            sb.Append(json[i++]);
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-        parse_errors.push_back(error_str);
+        parse_errors.Add(nl::String::Format("EOF at {}", i));
         return false;
     }
 
-    inline JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors)
+    inline JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
     {
-        char error_str[256];
         char ch = json[i];
 
         if (ch == '"')
         {
-            std::string sb;
+            nl::String sb;
             if (!Json_ReadString(sb, json, i, parse_errors))
                 return NULL;
 
-            return new JsonString(sb);
+            return nl::memory::ConstructThrow<JsonString>(sb);
         }
 
         if (Json_CharIsDigit(ch) ||
             (ch == '-' &&
-                i + 1 < json.length() &&
+                i + 1 < json.GetLength() &&
                 Json_CharIsDigit(json[i + 1])))
         {
             size_t temp_i = i;
-            __int64 value1;
+            int64_t value1;
             if (Json_ReadNumber(&value1, json, i))
-                return new JsonNumber(value1);
+                return nl::memory::ConstructThrow<JsonNumber>(value1);
 
             i = temp_i;
             double value2;
             if (Json_ReadDouble(&value2, json, i))
-                return new JsonNumber(value2);
+                return nl::memory::ConstructThrow<JsonNumber>(value2);
 
-            sprintf_s(error_str, __FUNCTION__ " - Value at offset %lu is neither number or double.", (unsigned int)temp_i);
-            parse_errors.push_back(error_str);
+            parse_errors.Add(nl::String::Format("Value at offset {} is neither number or double.", temp_i));
             return NULL;
         }
 
         if (ch == '{')
         {
-            auto obj = new JsonObject();
+            auto obj = nl::memory::ConstructThrow<JsonObject>();
             if (!obj->Read(json, i, parse_errors))
             {
-                delete obj;
+                nl::memory::Destroy(obj);
                 return NULL;
             }
 
@@ -248,39 +243,38 @@ namespace nl
 
         if (ch == '[')
         {
-            auto ary = new JsonArray();
+            auto ary = nl::memory::ConstructThrow<JsonArray>();
             if (!ary->Read(json, i, parse_errors))
             {
-                delete ary;
+                nl::memory::Destroy(ary);
                 return NULL;
             }
 
             return ary;
         }
 
-        if (i + 4 <= json.length() &&
-            _memicmp(json.c_str() + i, "true", 4) == 0)
+        if (i + 4 <= json.GetLength() &&
+            memcmp(json.c_str() + i, "true", 4) == 0)
         {
             i += 4;
-            return new JsonBoolean(true);
+            return nl::memory::ConstructThrow<JsonBoolean>(true);
         }
 
-        if (i + 5 <= json.length() &&
-            _memicmp(json.c_str() + i, "false", 5) == 0)
+        if (i + 5 <= json.GetLength() &&
+            memcmp(json.c_str() + i, "false", 5) == 0)
         {
             i += 5;
-            return new JsonBoolean(false);
+            return nl::memory::ConstructThrow<JsonBoolean>(false);
         }
 
-        if (i + 4 <= json.length() &&
-            _memicmp(json.c_str() + i, "null", 4) == 0)
+        if (i + 4 <= json.GetLength() &&
+            memcmp(json.c_str() + i, "null", 4) == 0)
         {
             i += 4;
-            return new JsonNull;
+            return nl::memory::ConstructThrow<JsonNull>();
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - No suitable json value found at offset %lu", (unsigned int)i);
-        parse_errors.push_back(error_str);
+        parse_errors.Add(nl::String::Format("No suitable json value found at offset {}", i));
         return NULL;
     }
 }

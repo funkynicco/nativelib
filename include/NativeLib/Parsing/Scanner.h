@@ -1,5 +1,6 @@
 #pragma once
 
+#include <NativeLib/Exceptions.h>
 #include <NativeLib/Parsing/Util.h>
 #include <NativeLib/Parsing/Token.h>
 #include <NativeLib/Parsing/Context.h>
@@ -7,8 +8,10 @@
 #include <NativeLib/RAII/Shared.h>
 #include <NativeLib/Containers/Stack.h>
 
-#include <string>
-#include <stack>
+#include <NativeLib/String.h>
+#include <NativeLib/Containers/Stack.h>
+
+#include <string_view>
 
 namespace nl
 {
@@ -23,14 +26,17 @@ namespace nl
             SCANNER_OPTION_DEFAULT = SCANNER_OPTION_NONE
         };
 
+        DeclareGenericException(OpenFileFailedException, "Could not open file");
+        DeclareGenericException(ReadFailedException, "Could not read file");
+
         class Scanner
         {
         public:
             Scanner() noexcept;
             Scanner(std::string_view str);
             Scanner(const char* str, size_t length = (size_t)-1);
-            Scanner(const std::string& str);
-            Scanner(std::string&& str);
+            Scanner(const nl::String& str);
+            Scanner(nl::String&& str);
 
             Scanner(Scanner&& other) noexcept;
             Scanner& operator =(Scanner&& other) noexcept;
@@ -52,13 +58,13 @@ namespace nl
             // Restores the context and then saves context again to reset the context to the previous context in the stack
             void ResetContext();
 
-            static Scanner FromFile(const char* filename);
+            static Scanner FromFile(std::string_view filename);
 
         protected:
-            virtual bool TransformToken(TokenType& tokenType, std::string_view token, std::string& result);
+            virtual bool TransformToken(TokenType& tokenType, std::string_view token, nl::String& result);
 
         private:
-            nl::Stack<nl::Shared<Context>, 4> m_contextStack;
+            nl::Stack<nl::Shared<Context>> m_contextStack;
 
             const Token m_endOfFileToken;
             const Token m_errorToken;
@@ -70,7 +76,7 @@ namespace nl
             bool SkipSingleComment();
             bool SkipMultiComment();
 
-            static int CalculateLines(const char* start, const char* end);
+            static int32_t CalculateLines(const char* start, const char* end);
         };
     }
 }

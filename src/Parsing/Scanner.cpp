@@ -12,7 +12,7 @@ namespace nl
     namespace parsing
     {
         // 16x16 grid
-        constexpr unsigned char HexTable[] =
+        constexpr uint8_t HexTable[] =
         {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //   0
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //  16
@@ -72,25 +72,25 @@ namespace nl
             if (length == (size_t)-1)
                 length = strlen(str);
 
-            auto container = nl::ConstructShared<std::string>(str, length);
+            auto container = nl::ConstructShared<nl::String>(str, length);
             m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
 
-        Scanner::Scanner(const std::string& str) :
+        Scanner::Scanner(const nl::String& str) :
             m_endOfFileToken(0, TokenType::EndOfFile),
             m_errorToken(0, TokenType::Error)
         {
-            auto container = nl::ConstructShared<std::string>(str);
+            auto container = nl::ConstructShared<nl::String>(str);
             m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
 
-        Scanner::Scanner(std::string&& str) :
+        Scanner::Scanner(nl::String&& str) :
             m_endOfFileToken(0, TokenType::EndOfFile),
             m_errorToken(0, TokenType::Error)
         {
-            auto container = nl::ConstructShared<std::string>(std::move(str));
+            auto container = nl::ConstructShared<nl::String>(std::move(str));
             m_contextStack.Push(nl::ConstructShared<Context>(container));
             SaveContext(); // save a duplicate
         }
@@ -242,7 +242,7 @@ namespace nl
         Token Scanner::Next()
         {
             Context* const context = m_contextStack.GetTop();
-            context->TempToken.clear();
+            context->TempToken.Clear();
 
             auto tokenType = TokenType::Error;
 
@@ -492,22 +492,22 @@ namespace nl
         void Scanner::RestoreContext()
         {
             nl_assert_if_debug(m_contextStack.GetCount() > 2); // must contain at least 3 since the 2 are for ResetContext
-            m_contextStack.Pop();
+            auto context = m_contextStack.Pop(); // context is pulled then destroyed at end of this function
         }
 
         void Scanner::ResetContext()
         {
             nl_assert_if_debug(m_contextStack.GetCount() >= 2); // assert that the stack must contain at least 2 contexts
-            m_contextStack.Pop();
+            auto context = m_contextStack.Pop(); // context is pulled then destroyed at end of this function
             m_contextStack.Push(nl::ConstructShared<Context>(*m_contextStack.GetTop()));
         }
 
-        bool Scanner::TransformToken(TokenType& tokenType, std::string_view token, std::string& result)
+        bool Scanner::TransformToken(TokenType& tokenType, std::string_view token, nl::String& result)
         {
             // if the token is hex, turn it into a 64bit unsigned number
             if (tokenType == TokenType::Hex)
             {
-                unsigned __int64 value = 0;
+                uint64_t value = 0;
 
                 const char* p = token.data();
                 const char* end = p + token.length();
@@ -518,34 +518,34 @@ namespace nl
                 }
 
                 char num[128];
-                int chars = sprintf_s(num, "%llu", value);
+                int32_t chars = sprintf_s(num, "%llu", value);
 
                 tokenType = TokenType::Number;
-                result.assign(num, chars);
+                result.Set(num, chars);
                 return true;
             }
 
             return false; // no changes to token
         }
 
-        Scanner Scanner::FromFile(const char* filename)
+        Scanner Scanner::FromFile(std::string_view filename)
         {
             auto file = nl::io::File::Open(filename, nl::io::CreateMode::OpenExisting, false);
             if (!file)
-                throw std::exception("Could not open file");
+                throw OpenFileFailedException();
 
             size_t fileSize = (size_t)file.GetSize();
 
-            std::string data(fileSize, 0);
-            if(file.Read(data.data(), fileSize)!=fileSize)
-                throw std::exception("read error");
+            auto data = nl::String(fileSize, 0);
+            if (file.Read(data.data(), fileSize) != fileSize)
+                throw ReadFailedException();
 
             return Scanner(std::move(data));
         }
 
-        int Scanner::CalculateLines(const char* start, const char* end)
+        int32_t Scanner::CalculateLines(const char* start, const char* end)
         {
-            int line = 0;
+            int32_t line = 0;
 
             const char* p = start;
 

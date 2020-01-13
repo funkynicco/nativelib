@@ -8,6 +8,8 @@
 
 #include "JsonInline.inl"
 
+#include <NativeLib/Allocators.h>
+
 //DefinePool(JsonObject, 16);
 
 namespace nl
@@ -16,29 +18,25 @@ namespace nl
     {
         for (auto it : m_members)
         {
-            delete it.second;
+            nl::memory::Destroy(it.second);
         }
     }
 
-    bool JsonObject::Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors)
+    bool JsonObject::Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
     {
-        char error_str[256];
-
         if (json[i] != '{')
         {
-            sprintf_s(error_str, __FUNCTION__ " - Json at offset %lu is not an array", (unsigned int)i);
-            parse_errors.push_back(error_str);
+            parse_errors.Add(nl::String::Format("Json at offset {} is not an array", i));
             return false;
         }
 
         ++i;
-        while (i < json.length())
+        while (i < json.GetLength())
         {
             Json_SkipWhitespace(json, i);
-            if (i >= json.length())
+            if (i >= json.GetLength())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-                parse_errors.push_back(error_str);
+                parse_errors.Add(nl::String::Format("EOF at {}", i));
                 return false;
             }
 
@@ -53,30 +51,27 @@ namespace nl
                 continue;
             }
 
-            std::string name;
+            nl::String name;
             if (!Json_ReadString(name, json, i, parse_errors))
                 return false;
 
             Json_SkipWhitespace(json, i);
-            if (i >= json.length())
+            if (i >= json.GetLength())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-                parse_errors.push_back(error_str);
+                parse_errors.Add(nl::String::Format("EOF at {}", i));
                 return false;
             }
 
             if (json[i++] != ':')
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-                parse_errors.push_back(error_str);
+                parse_errors.Add(nl::String::Format("EOF at {}", i));
                 return false;
             }
 
             Json_SkipWhitespace(json, i);
-            if (i >= json.length())
+            if (i >= json.GetLength())
             {
-                sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-                parse_errors.push_back(error_str);
+                parse_errors.Add(nl::String::Format("EOF at {}", i));
                 return false;
             }
 
@@ -84,17 +79,16 @@ namespace nl
             if (!value)
                 return false;
 
-            m_members.insert(std::pair<std::string, JsonBase*>(name, value));
+            m_members.Add(name, value);
         }
 
-        sprintf_s(error_str, __FUNCTION__ " - EOF at %lu", (unsigned int)i);
-        parse_errors.push_back(error_str);
+        parse_errors.Add(nl::String::Format("EOF at {}", i));
         return false;
     }
 
     void JsonObject::SetNull(const char* pszName)
     {
-        SetBase(pszName, new JsonNull);
+        SetBase(pszName, nl::memory::ConstructThrow<JsonNull>());
     }
 
     void JsonObject::SetObject(const char* pszName, JsonBase* obj)
@@ -104,42 +98,42 @@ namespace nl
 
     JsonObject* JsonObject::SetObject(const char* pszName)
     {
-        auto obj = new JsonObject;
+        auto obj = nl::memory::ConstructThrow<JsonObject>();
         SetBase(pszName, obj);
         return obj;
     }
 
     JsonArray* JsonObject::SetArray(const char* pszName)
     {
-        auto obj = new JsonArray;
+        auto obj = nl::memory::ConstructThrow<JsonArray>();
         SetBase(pszName, obj);
         return obj;
     }
 
     JsonBoolean* JsonObject::SetBoolean(const char* pszName, bool value)
     {
-        auto obj = new JsonBoolean(value);
+        auto obj = nl::memory::ConstructThrow<JsonBoolean>(value);
         SetBase(pszName, obj);
         return obj;
     }
 
     JsonString* JsonObject::SetString(const char* pszName, const char* value)
     {
-        auto obj = new JsonString(value);
+        auto obj = nl::memory::ConstructThrow<JsonString>(value);
         SetBase(pszName, obj);
         return obj;
     }
 
-    JsonNumber* JsonObject::SetNumber(const char* pszName, long long value)
+    JsonNumber* JsonObject::SetNumber(const char* pszName, int64_t value)
     {
-        auto obj = new JsonNumber(value);
+        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
         SetBase(pszName, obj);
         return obj;
     }
 
     JsonNumber* JsonObject::SetNumber(const char* pszName, double value)
     {
-        auto obj = new JsonNumber(value);
+        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
         SetBase(pszName, obj);
         return obj;
     }

@@ -5,12 +5,14 @@
 #pragma once
 
 #include <NativeLib/Exceptions.h>
+#include <NativeLib/Allocators.h>
+#include <NativeLib/String.h>
+#include <NativeLib/Containers/Vector.h>
+#include <NativeLib/RAII/Scoped.h>
+#include <NativeLib/Containers/Map.h>
 
-#include <unordered_map>
-#include <vector>
-#include <string>
+#include <stdint.h>
 #include <type_traits>
-#include <memory>
 
 namespace nl
 {
@@ -59,14 +61,12 @@ namespace nl
         virtual ~JsonBase() {}
         //DeclarePool(JsonBase);
 
-        inline JsonType GetType() const { return m_type; }
+        JsonType GetType() const { return m_type; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
         JsonBase(JsonType type);
         JsonType m_type;
-
-    private:
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -105,20 +105,20 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Object; }
 
-        inline JsonBase* GetMember(const char* name)
+        JsonBase* GetMember(const char* name)
         {
-            std::unordered_map<std::string, JsonBase*>::iterator it = m_members.find(name);
-            return it != m_members.end() ? it->second : NULL;
+            auto it = m_members.find(name);
+            return it != m_members.end() ? it->second : nullptr;
         }
 
-        inline const JsonBase* GetMember(const char* name) const
+        const JsonBase* GetMember(const char* name) const
         {
-            std::unordered_map<std::string, JsonBase*>::const_iterator it = m_members.find(name);
-            return it != m_members.end() ? it->second : NULL;
+            auto it = m_members.find(name);
+            return it != m_members.end() ? it->second : nullptr;
         }
 
         template <typename T>
-        inline T* GetMember(const char* name)
+        T* GetMember(const char* name)
         {
             auto pMember = GetMember(name);
             if (!pMember)
@@ -131,50 +131,49 @@ namespace nl
         }
 
         template <typename T>
-        inline const T* GetMember(const char* name) const { return static_cast<const T*>(GetMember(name)); }
+        const T* GetMember(const char* name) const { return static_cast<const T*>(GetMember(name)); }
 
-        inline size_t GetCount() const { return m_members.size(); }
-        inline std::unordered_map<std::string, JsonBase*>& GetMembers() { return m_members; }
-        inline const std::unordered_map<std::string, JsonBase*>& GetMembers() const { return m_members; }
+        size_t GetCount() const { return m_members.GetCount(); }
+        nl::Map<nl::String, JsonBase*>& GetMembers() { return m_members; }
+        const nl::Map<nl::String, JsonBase*>& GetMembers() const { return m_members; }
 
-        void            SetNull(const char* pszName);
-        void            SetObject(const char* pszName, JsonBase* obj);
+        void SetNull(const char* pszName);
+        void SetObject(const char* pszName, JsonBase* obj);
         JsonObject* SetObject(const char* pszName);
         JsonArray* SetArray(const char* pszName);
         JsonBoolean* SetBoolean(const char* pszName, bool value);
         JsonString* SetString(const char* pszName, const char* value);
-        JsonNumber* SetNumber(const char* pszName, long long value);
+        JsonNumber* SetNumber(const char* pszName, int64_t value);
         JsonNumber* SetNumber(const char* pszName, double value);
 
-        inline JsonNumber* SetNumber(const char* pszName, float value) { return SetNumber(pszName, (double)value); }
-        inline JsonNumber* SetNumber(const char* pszName, char value) { return SetNumber(pszName, (long long)value); }
-        inline JsonNumber* SetNumber(const char* pszName, unsigned char value) { return SetNumber(pszName, (long long)value); }
-        inline JsonNumber* SetNumber(const char* pszName, short value) { return SetNumber(pszName, (long long)value); }
-        inline JsonNumber* SetNumber(const char* pszName, int value) { return SetNumber(pszName, (long long)value); }
-        inline JsonNumber* SetNumber(const char* pszName, unsigned long value) { return SetNumber(pszName, (long long)value); }
+        JsonNumber* SetNumber(const char* pszName, float value) { return SetNumber(pszName, (double)value); }
+        JsonNumber* SetNumber(const char* pszName, char value) { return SetNumber(pszName, (int64_t)value); }
+        JsonNumber* SetNumber(const char* pszName, uint8_t value) { return SetNumber(pszName, (int64_t)value); }
+        JsonNumber* SetNumber(const char* pszName, int16_t value) { return SetNumber(pszName, (int64_t)value); }
+        JsonNumber* SetNumber(const char* pszName, int32_t value) { return SetNumber(pszName, (int64_t)value); }
+        JsonNumber* SetNumber(const char* pszName, uint32_t value) { return SetNumber(pszName, (int64_t)value); }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
-        friend std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
-        bool Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        bool Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
-
         template <typename T>
-        inline void SetBase(const char* pszName, T* pItem)
+        void SetBase(const char* pszName, T* pItem)
         {
             auto it = m_members.find(pszName);
             if (it != m_members.end())
             {
-                delete it->second;
-                m_members.erase(it);
+                nl::memory::Destroy(it->second);
+                m_members.Remove(it);
             }
 
-            m_members.insert(std::pair<std::string, JsonBase*>(pszName, pItem));
+            m_members.Add(pszName, pItem);
         }
 
-        std::unordered_map<std::string, JsonBase*> m_members;
+        nl::Map<nl::String, JsonBase*> m_members;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -194,15 +193,15 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Array; }
 
-        inline size_t GetCount() const { return m_items.size(); }
-        inline JsonBase* GetItem(size_t index) { return m_items[index]; }
-        inline const JsonBase* GetItem(size_t index) const { return m_items[index]; }
+        size_t GetCount() const { return m_items.GetCount(); }
+        JsonBase* GetItem(size_t index) { return m_items[index]; }
+        const JsonBase* GetItem(size_t index) const { return m_items[index]; }
 
         template <typename T>
-        inline T* GetItem(size_t index) { return static_cast<T*>(m_items[index]); }
+        T* GetItem(size_t index) { return static_cast<T*>(m_items[index]); }
 
         template <typename T>
-        inline const T* GetItem(size_t index) const { return static_cast<T*>(m_items[index]); }
+        const T* GetItem(size_t index) const { return static_cast<T*>(m_items[index]); }
 
         void AddNull();
         void AddObject(JsonBase* obj);
@@ -210,29 +209,29 @@ namespace nl
         JsonArray* AddArray();
         JsonBoolean* AddBoolean(bool value);
         JsonString* AddString(const char* value);
-        JsonNumber* AddNumber(long long value);
+        JsonNumber* AddNumber(int64_t value);
         JsonNumber* AddNumber(double value);
 
-        inline JsonNumber* AddNumber(float value) { return AddNumber((double)value); }
-        inline JsonNumber* AddNumber(char value) { return AddNumber((long long)value); }
-        inline JsonNumber* AddNumber(unsigned char value) { return AddNumber((long long)value); }
-        inline JsonNumber* AddNumber(short value) { return AddNumber((long long)value); }
-        inline JsonNumber* AddNumber(int value) { return AddNumber((long long)value); }
-        inline JsonNumber* AddNumber(unsigned long value) { return AddNumber((long long)value); }
+        JsonNumber* AddNumber(float value) { return AddNumber((double)value); }
+        JsonNumber* AddNumber(char value) { return AddNumber((int64_t)value); }
+        JsonNumber* AddNumber(uint8_t value) { return AddNumber((int64_t)value); }
+        JsonNumber* AddNumber(int16_t value) { return AddNumber((int64_t)value); }
+        JsonNumber* AddNumber(int32_t value) { return AddNumber((int64_t)value); }
+        JsonNumber* AddNumber(uint32_t value) { return AddNumber((int64_t)value); }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
-        friend std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
-        bool Read(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        bool Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
-        std::vector<JsonBase*> m_items;
+        nl::Vector<JsonBase*> m_items;
 
         template <typename T>
-        inline void AddBase(T* pItem)
+        void AddBase(T* pItem)
         {
-            m_items.push_back(pItem);
+            m_items.Add(pItem);
         }
     };
 
@@ -248,7 +247,7 @@ namespace nl
         {
         }
 
-        JsonString(const std::string& value) :
+        JsonString(const nl::String& value) :
             JsonBase(JsonType::String)
         {
             m_value = value;
@@ -259,14 +258,14 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::String; }
 
-        inline const std::string& GetValue() const { return m_value; }
-        inline void SetValue(const std::string& value) { m_value = value; }
+        const nl::String& GetValue() const { return m_value; }
+        void SetValue(const nl::String& value) { m_value = value; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
-        std::string m_value;
+        nl::String m_value;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +283,7 @@ namespace nl
             m_double = 0;
         }
 
-        JsonNumber(__int64 value) :
+        JsonNumber(int64_t value) :
             JsonBase(JsonType::Number)
         {
             m_bIsDouble = false;
@@ -296,7 +295,7 @@ namespace nl
             JsonBase(JsonType::Number)
         {
             m_bIsDouble = true;
-            m_value = (__int64)value;
+            m_value = (int64_t)value;
             m_double = value;
         }
 
@@ -305,25 +304,25 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Number; }
 
-        inline __int64 GetValue() const { return m_value; }
-        inline double GetDouble() const { return m_double; }
+        int64_t GetValue() const { return m_value; }
+        double GetDouble() const { return m_double; }
 
         template <typename T>
-        inline T GetValue() { return (T)m_value; }
+        T GetValue() { return (T)m_value; }
 
         template <typename T>
-        inline const T GetValue() const { return (T)m_value; }
+        const T GetValue() const { return (T)m_value; }
 
-        inline bool IsDouble() const { return m_bIsDouble; }
+        bool IsDouble() const { return m_bIsDouble; }
 
-        inline void SetValue(__int64 value)
+        void SetValue(int64_t value)
         {
             m_bIsDouble = false;
             m_value = value;
             m_double = 0.0;
         }
 
-        inline void SetValue(double value)
+        void SetValue(double value)
         {
             m_bIsDouble = true;
             m_value = 0;
@@ -331,11 +330,11 @@ namespace nl
         }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         bool m_bIsDouble;
-        __int64 m_value;
+        int64_t m_value;
         double m_double;
     };
 
@@ -363,11 +362,11 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Boolean; }
 
-        inline bool GetValue() const { return m_value; }
-        inline void SetValue(bool value) { m_value = value; }
+        bool GetValue() const { return m_value; }
+        void SetValue(bool value) { m_value = value; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const std::string& json, size_t& i, std::vector<std::string>& parse_errors);
+        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         bool m_value;
@@ -377,25 +376,25 @@ namespace nl
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    std::unique_ptr<JsonBase> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors);
+    nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
     template <typename T>
-    inline std::unique_ptr<T> ParseJson(const char* pszJson, std::vector<std::string>& parse_errors)
+    inline nl::Scoped<T> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
     {
         auto ptr = ParseJson(pszJson, parse_errors);
         if (!ptr)
             return nullptr;
 
-        return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
+        return nl::MakeScopedDestroy<T>(static_cast<T*>(ptr.Swap(nullptr)));
     }
 
-    bool GenerateJsonString(std::string& output, const JsonBase* pJson);
-    std::unique_ptr<JsonBase> CreateJsonObject(JsonType type);
+    bool GenerateJsonString(nl::String& output, const JsonBase* pJson);
+    nl::Scoped<JsonBase> CreateJsonObject(JsonType type);
 
     template <typename T>
-    inline std::unique_ptr<T> CreateJsonObject()
+    inline nl::Scoped<T> CreateJsonObject()
     {
-        std::unique_ptr<JsonBase> ptr;
+        nl::Scoped<JsonBase> ptr;
 
         if constexpr (std::is_same_v<T, JsonNull>)
             ptr = CreateJsonObject(JsonType::Null);
@@ -412,6 +411,6 @@ namespace nl
         else
             throw UnsupportedJsonTypeException();
 
-        return std::unique_ptr<T>(static_cast<T*>(ptr.release()));
+        return nl::MakeScopedDestroy<T>(static_cast<T*>(ptr.Swap(nullptr)));
     }
 }

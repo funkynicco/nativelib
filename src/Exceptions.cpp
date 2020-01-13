@@ -1,65 +1,66 @@
 #include "StdAfx.h"
 
 #include <NativeLib/Exceptions.h>
+#include <NativeLib/String.h>
 
-#include <NativeLib/Platform/DbgHelpWin.h>
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#include <DbgHelp.h>
 
-SRWLOCK Exception::m_lock = SRWLOCK_INIT;
-bool Exception::m_initializedSymbol = false;
-HANDLE Exception::m_hProcess = nullptr;
-HMODULE Exception::m_hKernel = nullptr;
-Exception::CaptureStackBackTraceType Exception::m_captureStackBackTrace = nullptr;
+typedef USHORT(WINAPI* CaptureStackBackTraceType)(ULONG FramesToSkip, ULONG FramesToCapture, PVOID* BackTrace, PULONG BackTraceHash);
 
-Exception::Exception(const wchar_t* message) noexcept
+static SRWLOCK g_lock = SRWLOCK_INIT;
+static bool g_initializedSymbol = false;
+static HANDLE g_hProcess = nullptr;
+static HMODULE g_hKernel = nullptr;
+static CaptureStackBackTraceType g_captureStackBackTrace = nullptr;
+
+static bool InitializeCallstackCapturing()
 {
-    wcscpy_s(m_message, message);
-    *m_callstack = 0;
+    g_hProcess = GetCurrentProcess();
 
-    CaptureCallstack();
+    if (!SymInitialize(g_hProcess, nullptr, TRUE))
+        return false;
+
+    g_hKernel = LoadLibraryW(L"kernel32.dll");
+    if (!g_hKernel)
+        return false;
+
+    g_captureStackBackTrace = reinterpret_cast<CaptureStackBackTraceType>(GetProcAddress(g_hKernel, "RtlCaptureStackBackTrace"));
+    if (!g_captureStackBackTrace)
+        return false;
+
+    g_initializedSymbol = true;
+    return true;
 }
+#endif
 
 Exception::Exception(const char* message) noexcept
 {
-    m_message[MultiByteToWideChar(CP_UTF8, 0, message, -1, m_message, sizeof(m_message) / sizeof(m_message[0]))] = 0;
+    strcpy_s(m_message, message);
+
+#ifdef NL_PLATFORM_WINDOWS
     *m_callstack = 0;
-
     CaptureCallstack();
+#endif
 }
 
-bool Exception::InitializeCallstackCapturing() noexcept
+#ifdef NL_PLATFORM_WINDOWS
+NL_NOINLINE void Exception::CaptureCallstack() noexcept
 {
-    m_hProcess = GetCurrentProcess();
-
-    if (!SymInitialize(m_hProcess, nullptr, TRUE))
-        return false;
-
-    m_hKernel = LoadLibrary(L"kernel32.dll");
-    if (!m_hKernel)
-        return false;
-
-    m_captureStackBackTrace = reinterpret_cast<CaptureStackBackTraceType>(GetProcAddress(m_hKernel, "RtlCaptureStackBackTrace"));
-    if (!m_captureStackBackTrace)
-        return false;
-
-    m_initializedSymbol = true;
-    return true;
-}
-
-DECLSPEC_NOINLINE void Exception::CaptureCallstack() noexcept
-{
-    AcquireSRWLockExclusive(&m_lock);
-    if (!m_initializedSymbol &&
+    AcquireSRWLockExclusive(&g_lock);
+    if (!g_initializedSymbol &&
         !InitializeCallstackCapturing())
     {
-        ReleaseSRWLockExclusive(&m_lock);
+        ReleaseSRWLockExclusive(&g_lock);
         return;
     }
 
     USHORT frames;
     LPVOID stack[100] = {};
-    if ((frames = m_captureStackBackTrace(2, 100, stack, nullptr)) == 0)
+    if ((frames = g_captureStackBackTrace(2, 100, stack, nullptr)) == 0)
     {
-        ReleaseSRWLockExclusive(&m_lock);
+        ReleaseSRWLockExclusive(&g_lock);
         return;
     }
 
@@ -68,18 +69,50 @@ DECLSPEC_NOINLINE void Exception::CaptureCallstack() noexcept
     symbol->MaxNameLen = 255;
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
-    nl::BasicString<1024> str;
+    nl::String str;
 
     for (USHORT i = 0; i < frames; ++i)
     {
-        SymFromAddr(m_hProcess, reinterpret_cast<DWORD64>(stack[i]), nullptr, symbol);
+        SymFromAddr(g_hProcess, reinterpret_cast<DWORD64>(stack[i]), nullptr, symbol);
 
         if (str.GetLength() != 0)
             str.Append("\n");
 
-        str.Append(nl::BasicString<128>::Format("- [{}] {}", (const void*)symbol->Address, symbol->Name));
+        str.Append(nl::String::Format("- [{}] {}", (const void*)symbol->Address, symbol->Name));
     }
 
-    m_callstack[MultiByteToWideChar(CP_UTF8, 0, str.c_str(), (int)str.GetLength(), m_callstack, sizeof(m_callstack) / sizeof(m_callstack[0]))] = 0;
-    ReleaseSRWLockExclusive(&m_lock);
+    strcpy_s(m_callstack, str.c_str());
+    ReleaseSRWLockExclusive(&g_lock);
 }
+
+Win32Exception::Win32Exception() :
+    Win32Exception(GetLastError())
+{
+}
+
+Win32Exception::Win32Exception(uint32_t dwCode) :
+    Exception(GetWin32ErrorMessage(dwCode))
+{
+}
+
+const char* Win32Exception::GetWin32ErrorMessage(uint32_t dwCode)
+{
+    thread_local char message[1024];
+    DWORD dwLen = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, dwCode, LANG_NEUTRAL, message, 1024, nullptr);
+    while (dwLen > 0 &&
+        (message[dwLen - 1] == '\r' || message[dwLen - 1] == '\n'))
+        --dwLen;
+    message[dwLen] = 0;
+    return message;
+}
+
+IOException::IOException(const char* msg) :
+    Exception(msg)
+{
+#ifdef NL_PLATFORM_WINDOWS
+    m_dwErrorCode = GetLastError();
+#else
+    m_dwErrorCode = (DWORD)errno;
+#endif
+}
+#endif

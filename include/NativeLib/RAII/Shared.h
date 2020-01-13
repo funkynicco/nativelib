@@ -2,6 +2,7 @@
 
 #include <NativeLib/RAII/Methods.h>
 #include <NativeLib/Assert.h>
+#include <NativeLib/Threading/Interlocked.h>
 
 #include <functional>
 
@@ -17,7 +18,7 @@ namespace nl
         {
             TObject* Object;
             Callback<TObject> Function;
-            ULONG References;
+            int32_t References;
 
             inline SharedObject(TObject* obj, Callback<TObject> function)
             {
@@ -33,7 +34,7 @@ namespace nl
         constexpr size_t ArchitectureAlignment = 8;
 #endif
 
-        inline constexpr size_t GetAlignedSize(size_t target, size_t start = ArchitectureAlignment)
+        constexpr size_t GetAlignedSize(size_t target, size_t start = ArchitectureAlignment)
         {
             return start < target ? GetAlignedSize(target, start + ArchitectureAlignment) : start;
         }
@@ -46,19 +47,25 @@ namespace nl
         using CallbackType = nl::shared_internals::Callback<TObject>;
         using SharedObjectType = nl::shared_internals::SharedObject<TObject>;
 
-        inline Shared() :
+        Shared() :
             m_shared(nullptr),
             m_externalShared(false)
         {
         }
 
-        inline Shared(SharedObjectType* shared) :
+        Shared(nullptr_t) :
+            m_shared(nullptr),
+            m_externalShared(false)
+        {
+        }
+
+        Shared(SharedObjectType* shared) :
             m_shared(shared),
             m_externalShared(true)
         {
         }
 
-        inline Shared(TObject* obj, CallbackType func) :
+        Shared(TObject* obj, CallbackType func) :
             m_shared(nullptr),
             m_externalShared(false)
         {
@@ -68,26 +75,26 @@ namespace nl
             new(m_shared) SharedObjectType(obj, func);
         }
 
-        inline Shared(Shared&& other) :
+        Shared(Shared&& other) :
             m_shared(other.m_shared),
             m_externalShared(other.m_externalShared)
         {
             other.m_shared = nullptr;
         }
 
-        inline Shared(const Shared& other)
+        Shared(const Shared& other)
         {
-            InterlockedIncrement(&other.m_shared->References);
+            nl::threading::Interlocked::Increment(&other.m_shared->References);
             m_shared = other.m_shared;
             m_externalShared = other.m_externalShared;
         }
 
-        inline ~Shared()
+        ~Shared()
         {
             Release();
         }
 
-        inline Shared& operator =(Shared&& other)
+        Shared& operator =(Shared&& other)
         {
             m_shared = other.m_shared;
             other.m_shared = nullptr;
@@ -95,55 +102,55 @@ namespace nl
             return *this;
         }
 
-        inline Shared& operator =(const Shared& other)
+        Shared& operator =(const Shared& other)
         {
-            InterlockedIncrement(&other.m_shared->References);
+            nl::threading::Interlocked::Increment(&other.m_shared->References);
             Release();
             m_shared = other.m_shared;
             m_externalShared = other.m_externalShared;
             return *this;
         }
 
-        inline TObject* get()
+        TObject* get()
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline const TObject* get() const
+        const TObject* get() const
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline operator TObject* ()
+        operator TObject* ()
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline operator const TObject* () const
+        operator const TObject* () const
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline TObject* operator ->()
+        TObject* operator ->()
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline const TObject* operator ->() const
+        const TObject* operator ->() const
         {
             nl_assert_if_debug(m_shared != nullptr);
             return m_shared->Object;
         }
 
-        inline void Release()
+        void Release()
         {
             if (m_shared &&
-                InterlockedDecrement(&m_shared->References) == 0)
+                nl::threading::Interlocked::Decrement(&m_shared->References) == 0)
             {
                 if (m_shared->Object)
                     m_shared->Function(m_shared->Object);

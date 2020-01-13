@@ -3,6 +3,9 @@
 #include <NativeLib/Definitions.h>
 #include <NativeLib/Exceptions.h>
 
+#include <type_traits>
+#include <stdint.h>
+
 namespace nl
 {
     namespace memory
@@ -12,7 +15,7 @@ namespace nl
         private:
             struct MemoryDataInfo
             {
-                LONG References;
+                int32_t References;
                 size_t Size;
             };
 
@@ -49,12 +52,6 @@ namespace nl
             
             Memory(void* lp) noexcept;
         };
-
-        typedef void*(*AllocateCallback)(size_t size);
-        typedef void*(*ReallocateCallback)(void* ptr, size_t size);
-        typedef void(*FreeCallback)(void* ptr);
-
-        void SetMemoryManagement(AllocateCallback allocate, ReallocateCallback reallocate, FreeCallback free);
 
         void* Allocate(size_t size);
         void* AllocateThrow(size_t size);

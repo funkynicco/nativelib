@@ -1,10 +1,21 @@
 #include "StdAfx.h"
 
+#ifdef NL_PLATFORM_WINDOWS
+
 #include <NativeLib/Rpc.h>
 #include <NativeLib/Logger.h>
 
 #include "DataBuffer.h"
 #include "RpcInternal.h"
+
+#include <NativeLib/SystemLayer/SystemLayer.h>
+#include <NativeLib/Allocators.h>
+#include <NativeLib/Threading/Interlocked.h>
+
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#undef GetMessage
+#endif
 
 #define HEADER_SIZE 8
 
@@ -12,15 +23,14 @@ namespace nl
 {
     namespace rpc
     {
-        static std::stack<OverlappedEx*> g_overlappedStack;
+        static nl::Stack<OverlappedEx*> g_overlappedStack;
 
         inline OverlappedEx* AllocateOverlapped(IOEVENT event)
         {
-            if (g_overlappedStack.size() == 0)
-                g_overlappedStack.push((OverlappedEx*)malloc(sizeof(OverlappedEx)));
+            if (g_overlappedStack.GetCount() == 0)
+                g_overlappedStack.Push((OverlappedEx*)nl::systemlayer::GetSystemLayerFunctions()->AllocateHeapMemory(sizeof(OverlappedEx)));
 
-            auto lpOverlapped = g_overlappedStack.top();
-            g_overlappedStack.pop();
+            auto lpOverlapped = g_overlappedStack.Pop();
 
             ZeroMemory(lpOverlapped, sizeof(OverlappedEx));
             lpOverlapped->Event = event;
@@ -29,7 +39,7 @@ namespace nl
 
         inline void FreeOverlapped(OverlappedEx* lpOverlapped)
         {
-            g_overlappedStack.push(lpOverlapped);
+            g_overlappedStack.Push(lpOverlapped);
         }
 
         ///////////////
@@ -48,7 +58,7 @@ namespace nl
 
         void Server::ConnectNewClient(const wchar_t* pipeName)
         {
-            LONG lClientId = InterlockedIncrement(&m_lNextClientId);
+            LONG lClientId = nl::threading::Interlocked::Increment(&m_lNextClientId);
 
             auto hPipe = CreateNamedPipe(
                 pipeName,
@@ -62,7 +72,7 @@ namespace nl
             CreateIoCompletionPort(hPipe, m_hIocp, 0, 0);
 
             auto lpOverlapped = AllocateOverlapped(IOEVENT_CONNECT);
-            lpOverlapped->Client = new PipeClient(hPipe, lClientId);
+            lpOverlapped->Client = nl::memory::ConstructThrow<PipeClient>(hPipe, lClientId);
 
             if (!ConnectNamedPipe(hPipe, &lpOverlapped->Overlapped) &&
                 GetLastError() != ERROR_PIPE_CONNECTED &&
@@ -180,7 +190,7 @@ namespace nl
             }
 
             // Parse the request json data
-            std::vector<std::string> parse_errors;
+            nl::Vector<nl::String> parse_errors;
             auto xb = nl::ParseJson(jsonDataString.c_str(), parse_errors);
             if (!xb ||
                 xb->GetType() != nl::JsonType::Object)
@@ -189,7 +199,7 @@ namespace nl
                 return;
             }
 
-            auto requestJson = std::unique_ptr<nl::JsonObject>(static_cast<nl::JsonObject*>(xb.release()));
+            auto requestJson = nl::MakeScopedDestroy<nl::JsonObject>(static_cast<nl::JsonObject*>(xb.Swap(nullptr))); // xb is JsonBase, this convert it to JsonObject
             auto responseJson = nl::CreateJsonObject<nl::JsonObject>();
 
             try
@@ -198,21 +208,14 @@ namespace nl
             }
             catch (Exception & ex)
             {
-                int msg_len = (int)wcslen(ex.GetMessage());
-                int required_len = WideCharToMultiByte(CP_UTF8, 0, ex.GetMessage(), msg_len, nullptr, 0, nullptr, nullptr);
-
-                std::string result;
-                result.resize(required_len);
-                WideCharToMultiByte(CP_UTF8, 0, ex.GetMessage(), msg_len, result.data(), required_len, nullptr, nullptr);
-
-                SendError(client, requestId, result.c_str());
+                SendError(client, requestId, ex.GetMessage());
                 return;
             }
 
             // Send back result ...
             auto resp = nl::CreateJsonObject<nl::JsonObject>();
             resp->SetNull("error");
-            resp->SetObject("result", responseJson.release()); // takes ownership
+            resp->SetObject("result", responseJson.Swap(nullptr)); // takes ownership
             SendJson(client, requestId, resp);
         }
 
@@ -223,9 +226,9 @@ namespace nl
             SendJson(client, requestId, obj);
         }
 
-        void Server::SendJson(class PipeClient* client, int requestId, const std::unique_ptr<nl::JsonObject>& json)
+        void Server::SendJson(class PipeClient* client, int requestId, const nl::Scoped<nl::JsonObject>& json)
         {
-            std::string str;
+            nl::String str;
             nl::GenerateJsonString(str, json.get());
 
             DataBuffer out;
@@ -242,3 +245,5 @@ namespace nl
         }
     }
 }
+
+#endif

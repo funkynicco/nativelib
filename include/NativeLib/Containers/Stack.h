@@ -4,7 +4,7 @@
 
 namespace nl
 {
-    template <typename T, size_t InitialSize>
+    template <typename T>
     class BaseStack
     {
     protected:
@@ -53,51 +53,53 @@ namespace nl
         }
 
     private:
-        Vector<T, InitialSize> m_stack;
+        Vector<T> m_stack;
     };
 
-    template <typename T, size_t InitialSize>
-    class Stack : public BaseStack<T, InitialSize>
+    template <typename T>
+    class Stack : public BaseStack<T>
     {
+        typedef BaseStack<T> super;
+
     public:
         size_t GetCount() const
         {
-            return _GetCount();
+            return super::_GetCount();
         }
 
         void Clear()
         {
-            _Clear();
+            super::_Clear();
         }
 
         T GetTop()
         {
-            return _GetTop();
+            return super::_GetTop();
         }
 
         const T GetTop() const
         {
-            return _GetTop();
+            return super::_GetTop();
         }
 
         T Pop()
         {
-            return _Pop();
+            return super::_Pop();
         }
 
         bool TryPop(T* value)
         {
-            return _TryPop(value);
+            return super::_TryPop(value);
         }
 
         void Push(const T& value)
         {
-            _Push(value);
+            super::_Push(value);
         }
 
         void Push(T&& value)
         {
-            _Push(std::move(value));
+            super::_Push(std::move(value));
         }
     };
 }

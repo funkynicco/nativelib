@@ -1,11 +1,13 @@
 #pragma once
 
-#include <unordered_map>
-#include <stack>
-#include <string>
+#ifdef NL_PLATFORM_WINDOWS
+
+#include <NativeLib/Containers/Map.h>
+#include <NativeLib/Containers/Stack.h>
 
 #include <NativeLib/Json.h>
 #include <NativeLib/Exceptions.h>
+#include <NativeLib/String.h>
 
 namespace nl
 {
@@ -19,8 +21,8 @@ namespace nl
             ClientDisconnected
         };
 
-        typedef void(*pfnEventHandler)(class Server* rpc, Events event, LONG_PTR data);
-        typedef void(*pfn)(class Server* rpc, LONG client_id, const nl::JsonObject* request, nl::JsonObject* response);
+        typedef void(*pfnEventHandler)(class Server* rpc, Events event, intptr_t data);
+        typedef void(*pfn)(class Server* rpc, int32_t client_id, const nl::JsonObject* request, nl::JsonObject* response);
 
         class Server
         {
@@ -34,28 +36,30 @@ namespace nl
                 m_pfnEventHandler = pfn;
             }
 
-            void Bind(const std::string& name, pfn procedure)
+            void Bind(const nl::String& name, pfn procedure)
             {
-                m_procedures.insert(std::make_pair(name, procedure));
+                m_procedures.Add(name, procedure);
             }
 
-            LONG_PTR GetUserData() { return m_lUserData; }
-            void SetTag(LONG_PTR lUserData) { m_lUserData = lUserData; }
+            intptr_t GetUserData() { return m_lUserData; }
+            void SetTag(intptr_t lUserData) { m_lUserData = lUserData; }
 
         protected:
             void HandleRequest(class PipeClient* client, class DataBuffer& buffer, int requestId);
             void SendError(class PipeClient* client, int requestId, const char* message);
-            void SendJson(class PipeClient* client, int requestId, const std::unique_ptr<nl::JsonObject>& json);
+            void SendJson(class PipeClient* client, int requestId, const nl::Scoped<nl::JsonObject>& json);
 
         private:
             pfnEventHandler m_pfnEventHandler;
-            std::unordered_map<std::string, pfn> m_procedures;
-            HANDLE m_hIocp;
-            LONG_PTR m_lUserData;
+            nl::Map<nl::String, pfn> m_procedures;
+            void* m_hIocp;
+            intptr_t m_lUserData;
 
-            LONG m_lNextClientId;
+            int32_t m_lNextClientId;
 
             void ConnectNewClient(const wchar_t* pipeName);
         };
     }
 }
+
+#endif

@@ -1,6 +1,12 @@
 #include "StdAfx.h"
 
 #include <NativeLib/Allocators.h>
+#include <NativeLib/SystemLayer/SystemLayer.h>
+#include <NativeLib/Threading/Interlocked.h>
+
+#ifdef NL_PLATFORM_WINDOWS
+#include <Windows.h>
+#endif
 
 namespace nl
 {
@@ -19,14 +25,14 @@ namespace nl
         Memory::~Memory()
         {
             auto info = reinterpret_cast<MemoryDataInfo*>(m_lp) - 1;
-            if (InterlockedDecrement(&info->References) == 0)
+            if (nl::threading::Interlocked::Decrement(&info->References) == 0)
                 nl::memory::Free(info);
         }
 
         Memory::Memory(const Memory& memory) noexcept
         {
             auto info = reinterpret_cast<MemoryDataInfo*>(memory.m_lp) - 1;
-            InterlockedIncrement(&info->References);
+            nl::threading::Interlocked::Increment(&info->References);
 
             m_lp = memory.m_lp;
         }
@@ -35,18 +41,18 @@ namespace nl
         {
             m_lp = memory.m_lp;
 
-            InterlockedIncrement(&s_zeroSizeData.References);
+            nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
             memory.m_lp = &s_zeroSizeData;
         }
 
         Memory& Memory::operator =(const Memory& memory) noexcept
         {
             auto info = reinterpret_cast<MemoryDataInfo*>(m_lp) - 1;
-            if (InterlockedDecrement(&info->References) == 0)
+            if (nl::threading::Interlocked::Decrement(&info->References) == 0)
                 nl::memory::Free(info);
 
             info = reinterpret_cast<MemoryDataInfo*>(memory.m_lp) - 1;
-            InterlockedIncrement(&info->References);
+            nl::threading::Interlocked::Increment(&info->References);
 
             m_lp = memory.m_lp;
             return *this;
@@ -55,12 +61,12 @@ namespace nl
         Memory& Memory::operator =(Memory&& memory) noexcept
         {
             auto info = reinterpret_cast<MemoryDataInfo*>(m_lp) - 1;
-            if (InterlockedDecrement(&info->References) == 0)
+            if (nl::threading::Interlocked::Decrement(&info->References) == 0)
                 nl::memory::Free(info);
 
             m_lp = memory.m_lp;
 
-            InterlockedIncrement(&s_zeroSizeData.References);
+            nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
             memory.m_lp = &s_zeroSizeData;
             return *this;
         }
@@ -77,7 +83,7 @@ namespace nl
             {
                 nl_assert_if_debug(size != 0);
 
-                InterlockedIncrement(&s_zeroSizeData.References);
+                nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
                 return Memory(&s_zeroSizeData);
             }
 
@@ -91,40 +97,17 @@ namespace nl
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        static AllocateCallback g_allocate = nullptr;
-        static ReallocateCallback g_reallocate = nullptr;
-        static FreeCallback g_free = nullptr;
-
-        void SetMemoryManagement(AllocateCallback allocate, ReallocateCallback reallocate, FreeCallback free)
-        {
-            if (!allocate)
-                throw ArgumentException(L"allocate must be set");
-
-            if (!reallocate)
-                throw ArgumentException(L"reallocate must be set");
-
-            if (!free)
-                throw ArgumentException(L"free must be set");
-
-            if (g_allocate)
-                throw InvalidOperationException(L"Setting memory allocation callbacks can only be done once.");
-
-            g_allocate = allocate;
-            g_reallocate = reallocate;
-            g_free = free;
-        }
-
         void* Allocate(size_t size)
         {
             nl_assert_if_debug(size != 0);
-            return g_allocate(size);
+            return nl::systemlayer::GetSystemLayerFunctions()->AllocateHeapMemory(size);
         }
 
         void* AllocateThrow(size_t size)
         {
             nl_assert_if_debug(size != 0);
 
-            auto ptr = g_allocate(size);;
+            auto ptr = nl::systemlayer::GetSystemLayerFunctions()->AllocateHeapMemory(size);;
             if (!ptr)
                 throw BadAllocationException();
 
@@ -134,13 +117,13 @@ namespace nl
         void* Reallocate(void* ptr, size_t size)
         {
             nl_assert_if_debug(ptr != nullptr);
-            return g_reallocate(ptr, size);
+            return nl::systemlayer::GetSystemLayerFunctions()->ReallocateHeapMemory(ptr, size);
         }
 
         void Free(void* ptr)
         {
             nl_assert_if_debug(ptr != nullptr);
-            g_free(ptr);
+            nl::systemlayer::GetSystemLayerFunctions()->FreeHeapMemory(ptr);
         }
     }
 }

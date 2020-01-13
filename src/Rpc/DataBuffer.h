@@ -1,9 +1,16 @@
 #pragma once
 
+#include <NativeLib/Exceptions.h>
+#include <NativeLib/String.h>
+
+#include <string_view>
+
 namespace nl
 {
     namespace rpc
     {
+        DeclareGenericException(EndOfFileException, "Attempted to perform I/O operation beyond the end of the file");
+
         class DataBuffer
         {
         public:
@@ -29,8 +36,8 @@ namespace nl
 
             DataBuffer& Read(void* lp, size_t length);
             DataBuffer& Write(const void* lp, size_t length);
-            std::string ReadString();
-            DataBuffer& WriteString(const std::string& str);
+            nl::String ReadString();
+            DataBuffer& WriteString(const std::string_view& str);
             
             DataBuffer& Delete(size_t count);
 

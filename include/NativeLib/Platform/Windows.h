@@ -1,7 +1,7 @@
-#pragma once
-
-#ifndef _WIN32
-#error Cannot use Windows platform API when not compiling for Windows.
+#ifndef __NL_PLATFORM_H_SCOPE
+#error Cannot directly include NativeLib/Platform/Windows.h - Use NativeLib/Platform/Platform.h instead.
 #endif
 
-#include <Windows.h>
+#pragma once
+
+#define NL_NOINLINE __declspec(noinline)

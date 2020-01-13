@@ -15,13 +15,13 @@ namespace nl
         {
         }
 
-        Token::Token(int line, TokenType tokenType) :
+        Token::Token(int32_t line, TokenType tokenType) :
             m_line(line),
             m_tokenType(tokenType)
         {
         }
 
-        Token::Token(int line, TokenType tokenType, std::string_view token) :
+        Token::Token(int32_t line, TokenType tokenType, std::string_view token) :
             m_line(line),
             m_tokenType(tokenType),
             m_token(token)
@@ -38,9 +38,9 @@ namespace nl
             return m_token;
         }
 
-        Token::operator std::string() const
+        Token::operator nl::String() const
         {
-            return std::string(m_token);
+            return nl::String(m_token);
         }
 
         Token::operator bool() const
@@ -73,7 +73,7 @@ namespace nl
             return m_token.length();
         }
 
-        bool Token::GetToken(int* pnValue) const
+        bool Token::GetToken(int32_t* pnValue) const
         {
             auto token = m_token;
             if (token.length() == 0)
@@ -83,7 +83,7 @@ namespace nl
             if (isNegative)
                 token = token.substr(1);
 
-            int value = 0;
+            int32_t value = 0;
             for (auto x : token)
             {
                 value *= 10;
@@ -97,13 +97,13 @@ namespace nl
             return true;
         }
 
-        bool Token::GetToken(unsigned int* pnValue) const
+        bool Token::GetToken(uint32_t* pnValue) const
         {
             auto token = m_token;
             if (token.length() == 0)
                 return false;
 
-            unsigned int value = 0;
+            uint32_t value = 0;
             for (auto x : token)
             {
                 value *= 10;
@@ -114,7 +114,7 @@ namespace nl
             return true;
         }
 
-        bool Token::GetToken(__int64* pnValue) const
+        bool Token::GetToken(int64_t* pnValue) const
         {
             auto token = m_token;
             if (token.length() == 0)
@@ -124,11 +124,11 @@ namespace nl
             if (isNegative)
                 token = token.substr(1);
 
-            __int64 value = 0;
+            int64_t value = 0;
             for (auto x : token)
             {
                 value *= 10;
-                value += (__int64)x - '0';
+                value += (int64_t)x - '0';
             }
 
             if (isNegative)
@@ -138,17 +138,17 @@ namespace nl
             return true;
         }
 
-        bool Token::GetToken(unsigned __int64* pnValue) const
+        bool Token::GetToken(uint64_t* pnValue) const
         {
             auto token = m_token;
             if (token.length() == 0)
                 return false;
 
-            unsigned __int64 value = 0;
+            uint64_t value = 0;
             for (auto x : token)
             {
                 value *= 10;
-                value += (unsigned __int64)x - '0';
+                value += (uint64_t)x - '0';
             }
 
             *pnValue = value;
@@ -209,7 +209,7 @@ namespace nl
             return m_tokenType == TokenType::Float;
         }
 
-        int Token::GetLine() const
+        int32_t Token::GetLine() const
         {
             return m_line;
         }
