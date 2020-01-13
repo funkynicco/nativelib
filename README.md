@@ -25,3 +25,12 @@ The library project files are generated using [Premake5](https://premake.github.
 - Threading utilities (ReadWriteLock, Interlocked)
 - System API Layer isolation
 - Platform definitions
+
+## Motivation
+Provide a core isolated abstraction layer library for use in anything that wants more control of where and how its running. The idea is to not let loose the various system api calls hidden away in STL headers, but to route these to the library user instead, while providing common core functionality to help design a more stable and consistent codebase.
+
+The name NativeLib comes from the idea of slim dependency on other libraries and the system itself, to see it as a native isolation layer where user builds app ontop.
+
+The image below shows a visual idea of what NativeLib is designed for.
+
+![alt text](media/layer-graph.png "NativeLib Isolated Layering")
