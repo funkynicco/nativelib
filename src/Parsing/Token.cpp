@@ -28,6 +28,22 @@ namespace nl
         {
         }
 
+        Token::Token(int32_t line, TokenType tokenType, const nl::String& token) :
+            m_line(line),
+            m_tokenType(tokenType),
+            m_transformedToken(token),
+            m_token(m_transformedToken)
+        {
+        }
+
+        Token::Token(int32_t line, TokenType tokenType, nl::String&& token) :
+            m_line(line),
+            m_tokenType(tokenType),
+            m_transformedToken(std::move(token)),
+            m_token(m_transformedToken)
+        {
+        }
+
         Token::operator TokenType() const
         {
             return m_tokenType;

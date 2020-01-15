@@ -24,7 +24,7 @@ namespace nl
 	class String
 	{
 	public:
-		static constexpr size_t StackSize = 128;
+		static constexpr size_t StackSize = 32; // max length: abcdefghijklmnopqrstuvwxyzabcde
 
 		static const size_t npos = (size_t)-1;
 

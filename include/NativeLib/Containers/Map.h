@@ -8,6 +8,7 @@
 #include <NativeLib/Containers/Vector.h>
 
 // TODO: write a proper Map, with bucket index that has a linked list of the nodes
+// TODO: #error this crashes when begin() + i is called due to comparing to end fails..
 
 namespace nl
 {

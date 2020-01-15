@@ -484,6 +484,14 @@ namespace nl
             return Token(context->Line, tokenType, context->GetTokenView());
         }
 
+        Token Scanner::Peek()
+        {
+            SaveContext();
+            auto token = Next();
+            RestoreContext();
+            return token;
+        }
+
         void Scanner::SaveContext()
         {
             m_contextStack.Push(nl::ConstructShared<Context>(*m_contextStack.GetTop()));

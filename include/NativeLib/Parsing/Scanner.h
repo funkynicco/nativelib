@@ -49,6 +49,9 @@ namespace nl
             // Advances the scanner to the next token
             Token Next();
 
+            // Peeks the next token without advancing scanner
+            Token Peek();
+
             // Pushes the context onto the context stack
             void SaveContext();
             

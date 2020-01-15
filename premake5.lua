@@ -41,7 +41,8 @@ workspace "nativelib"
         symbols "on"
 
         defines {
-            "_DEBUG"
+            "_DEBUG",
+            "_CRT_SECURE_NO_WARNINGS"
         }
     
     filter "configurations:Release"

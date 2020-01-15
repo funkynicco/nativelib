@@ -4,6 +4,8 @@
 
 #pragma comment(lib, "DbgHelp.lib")
 
+//#error Rewrite this project to be a Unit Test instead / how to generate output? console write?
+
 void AssertHandler(const nl::assert::Assert& assert)
 {
     auto message = nl::String::Format("Expression: {}\nFunction: {}\nFile: {}:{}", assert.Expression, assert.Function, assert.Filename, assert.Line);
@@ -59,7 +61,15 @@ int main(int, char**)
 
     )");
 
+    //auto xx = scanner.Peek();
+
+    nl::Vector<nl::parsing::Token> tokens;
     while (auto token = scanner.Next())
+    {
+        tokens.Add(std::move(token));
+    }
+
+    for (const auto& token : tokens)
     {
         std::cout << std::setw(11) << std::left << nl::parsing::TokenTypeToString(token) << " " << token << " (Line: " << token.GetLine() << ")" << std::endl;
     }

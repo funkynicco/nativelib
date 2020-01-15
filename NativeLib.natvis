@@ -9,8 +9,20 @@
     </Expand>
   </Type>
   
-  <Type Name="nl::Vector&lt;*,*&gt;">
+  <Type Name="nl::Vector&lt;*&gt;">
     <DisplayString>{{Count = {m_uCount}}}</DisplayString>
+    <Expand>
+      <Item Name="Count">m_uCount</Item>
+      <Item Name="Capacity">m_uSize</Item>
+      <ArrayItems>
+        <Size>m_uCount</Size>
+        <ValuePointer>m_pArray</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="nl::BaseStack&lt;*&gt;">
+    <DisplayString>{m_stack}</DisplayString>
     <Expand>
       <Item Name="Count">m_uCount</Item>
       <Item Name="Capacity">m_uSize</Item>

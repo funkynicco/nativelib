@@ -15,6 +15,8 @@ namespace nl
             Token();
             Token(int32_t line, TokenType tokenType);
             Token(int32_t line, TokenType tokenType, std::string_view token);
+            Token(int32_t line, TokenType tokenType, const nl::String& token);
+            Token(int32_t line, TokenType tokenType, nl::String&& token);
 
             operator TokenType() const;
             operator std::string_view() const;
@@ -47,6 +49,7 @@ namespace nl
 
         private:
             TokenType m_tokenType;
+            nl::String m_transformedToken;
             std::string_view m_token;
             int32_t m_line;
         };
