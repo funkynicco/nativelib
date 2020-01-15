@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-  <Type Name="nl::BasicString&lt;*&gt;">
+  <Type Name="nl::String">
     <DisplayString>"{m_pString,sb}"</DisplayString>
     <!-- sb means don't show the pointer -->
     <Expand>

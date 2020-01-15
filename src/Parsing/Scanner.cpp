@@ -242,7 +242,6 @@ namespace nl
         Token Scanner::Next()
         {
             Context* const context = m_contextStack.GetTop();
-            context->TempToken.Clear();
 
             auto tokenType = TokenType::Error;
 
@@ -291,11 +290,13 @@ namespace nl
             const char* token_start = p;
 
             // calculate lines between previous token point (or start)
-            const char* previousTokenStart = context->TokenBegin;
+            const char* previousTokenStart = context->LastViewBegin;
             if (previousTokenStart == nullptr)
                 previousTokenStart = context->DataBegin;
 
             context->Line += CalculateLines(previousTokenStart, token_start);
+
+            context->LastViewBegin = context->ViewBegin;
 
             // double quoted strings
             if (*p == '"')
@@ -327,17 +328,14 @@ namespace nl
                 }
 
                 tokenType = TokenType::String;
+                nl::String transformedToken;
                 if (TransformToken(
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
-                    context->TempToken))
-                {
-                    context->SetTokenToTemp(tokenType);
-                    return Token(context->Line, tokenType, context->GetTokenView());
-                }
+                    transformedToken))
+                    return Token(context->Line, tokenType, std::move(transformedToken));
 
-                context->SetToken(token_start, token_end, tokenType);
-                return Token(context->Line, TokenType::String, context->GetTokenView());
+                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
             }
 
             // single quoted strings
@@ -370,17 +368,14 @@ namespace nl
                 }
 
                 tokenType = TokenType::String;
+                nl::String transformedToken;
                 if (TransformToken(
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
-                    context->TempToken))
-                {
-                    context->SetTokenToTemp(tokenType);
-                    return Token(context->Line, tokenType, context->GetTokenView());
-                }
+                    transformedToken))
+                    return Token(context->Line, tokenType, std::move(transformedToken));
 
-                context->SetToken(token_start, token_end, tokenType);
-                return Token(context->Line, TokenType::String, context->GetTokenView());
+                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
             }
 
             /*
@@ -411,13 +406,27 @@ namespace nl
                         IsHex(*p))
                         ++p;
 
+                    /*
+                tokenType = TokenType::String;
+                nl::String transformedToken;
+                if (TransformToken(
+                    tokenType,
+                    std::string_view(token_start, size_t(token_end - token_start)),
+                    transformedToken))
+                    return Token(context->Line, tokenType, std::move(transformedToken));
+
+                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
+                    */
+
                     tokenType = TokenType::Hex;
-                    context->SetToken(token_start, p, tokenType);
+                    nl::String transformedToken;
+                    if (TransformToken(
+                        tokenType,
+                        std::string_view(token_start, size_t(p - token_start)),
+                        transformedToken))
+                        return Token(context->Line, tokenType, std::move(transformedToken));
 
-                    if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
-                        context->SetTokenToTemp(tokenType);
-
-                    return Token(context->Line, tokenType, context->GetTokenView());
+                    return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
                 }
                 else
                 {
@@ -449,12 +458,14 @@ namespace nl
                     }
 
                     tokenType = TokenType::Number;
-                    context->SetToken(token_start, p, tokenType);
+                    nl::String transformedToken;
+                    if (TransformToken(
+                        tokenType,
+                        std::string_view(token_start, size_t(p - token_start)),
+                        transformedToken))
+                        return Token(context->Line, tokenType, std::move(transformedToken));
 
-                    if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
-                        context->SetTokenToTemp(tokenType);
-
-                    return Token(context->Line, tokenType, context->GetTokenView());
+                    return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
                 }
             }
 
@@ -467,21 +478,27 @@ namespace nl
                     ++p;
 
                 tokenType = TokenType::Keyword;
-                context->SetToken(token_start, p, tokenType);
+                nl::String transformedToken;
+                if (TransformToken(
+                    tokenType,
+                    std::string_view(token_start, size_t(p - token_start)),
+                    transformedToken))
+                    return Token(context->Line, tokenType, std::move(transformedToken));
 
-                if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
-                    context->SetTokenToTemp(tokenType);
-
-                return Token(context->Line, tokenType, context->GetTokenView());
+                return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
             }
 
+            ++p;
+
             tokenType = TokenType::Delimiter;
-            context->SetToken(token_start, ++p, tokenType);
+            nl::String transformedToken;
+            if (TransformToken(
+                tokenType,
+                std::string_view(token_start, size_t(p - token_start)),
+                transformedToken))
+                return Token(context->Line, tokenType, std::move(transformedToken));
 
-            if (TransformToken(tokenType, context->GetTokenView(), context->TempToken))
-                context->SetTokenToTemp(tokenType);
-
-            return Token(context->Line, tokenType, context->GetTokenView());
+            return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
         }
 
         Token Scanner::Peek()

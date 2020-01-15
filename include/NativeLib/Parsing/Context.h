@@ -18,17 +18,11 @@ namespace nl
 
             /*** these variables changes ***/
 
+            const char* LastViewBegin;
             const char* ViewBegin;
             const char* ViewEnd;
 
-            const char* TokenBegin;
-            const char* TokenEnd;
-            TokenType TokenType;
-
             int32_t Line;
-
-            // use only when a token needs to change value, ie \n in a string
-            nl::String TempToken;
 
             Context(const char* dataBegin, const char* dataEnd) noexcept;
             Context(nl::Shared<nl::String> container) noexcept;
@@ -42,14 +36,10 @@ namespace nl
 
             void Reset();
             void Empty();
-            void SetToken(const char* tokenBegin, const char* tokenEnd, nl::parsing::TokenType tokenType);
-            void SetTokenToTemp(nl::parsing::TokenType tokenType);
             
             bool IsEnd() const;
-            bool IsTokenSet() const;
             
             std::string_view GetView() const;
-            std::string_view GetTokenView() const;
         };
     }
 }
