@@ -11,42 +11,63 @@ namespace nl
     {
         Token::Token() :
             m_line(1),
-            m_tokenType(TokenType::EndOfFile)
+            m_tokenType(TokenType::EndOfFile),
+            m_operatorType(OperatorType::Unset),
+            m_token(std::string_view("\0", 1))
         {
+            nl_assert_if_debug(!m_token.empty());
         }
 
-        Token::Token(int32_t line, TokenType tokenType) :
-            m_line(line),
-            m_tokenType(tokenType)
-        {
-        }
-
-        Token::Token(int32_t line, TokenType tokenType, std::string_view token) :
+        Token::Token(int32_t line, TokenType tokenType, OperatorType operatorType) :
             m_line(line),
             m_tokenType(tokenType),
+            m_operatorType(operatorType),
+            m_token(std::string_view("\0", 1))
+        {
+            nl_assert_if_debug(!m_token.empty());
+            nl_assert_if_debug(tokenType != TokenType::Operator || operatorType != OperatorType::Unset);
+        }
+
+        Token::Token(int32_t line, TokenType tokenType, OperatorType operatorType, std::string_view token) :
+            m_line(line),
+            m_tokenType(tokenType),
+            m_operatorType(operatorType),
             m_token(token)
         {
+            nl_assert_if_debug(!m_token.empty());
+            nl_assert_if_debug(tokenType != TokenType::Operator || operatorType != OperatorType::Unset);
         }
 
-        Token::Token(int32_t line, TokenType tokenType, const nl::String& token) :
+        Token::Token(int32_t line, TokenType tokenType, OperatorType operatorType, const nl::String& token) :
             m_line(line),
             m_tokenType(tokenType),
+            m_operatorType(operatorType),
             m_transformedToken(token),
             m_token(m_transformedToken)
         {
+            nl_assert_if_debug(!m_token.empty());
+            nl_assert_if_debug(tokenType != TokenType::Operator || operatorType != OperatorType::Unset);
         }
 
-        Token::Token(int32_t line, TokenType tokenType, nl::String&& token) :
+        Token::Token(int32_t line, TokenType tokenType, OperatorType operatorType, nl::String&& token) :
             m_line(line),
             m_tokenType(tokenType),
+            m_operatorType(operatorType),
             m_transformedToken(std::move(token)),
             m_token(m_transformedToken)
         {
+            nl_assert_if_debug(!m_token.empty());
+            nl_assert_if_debug(tokenType != TokenType::Operator || operatorType != OperatorType::Unset);
         }
 
         Token::operator TokenType() const
         {
             return m_tokenType;
+        }
+
+        Token::operator OperatorType() const
+        {
+            return m_operatorType;
         }
 
         Token::operator std::string_view() const
@@ -72,6 +93,16 @@ namespace nl
         bool Token::operator !=(std::string_view value) const
         {
             return value != m_token;
+        }
+
+        bool Token::operator ==(char ch) const
+        {
+            return *m_token.data() == ch;
+        }
+
+        bool Token::operator !=(char ch) const
+        {
+            return *m_token.data() != ch;
         }
 
         std::string_view Token::view() const
@@ -223,6 +254,11 @@ namespace nl
         bool Token::IsFloat() const
         {
             return m_tokenType == TokenType::Float;
+        }
+
+        bool Token::IsOperator() const
+        {
+            return m_tokenType == TokenType::Operator;
         }
 
         int32_t Token::GetLine() const

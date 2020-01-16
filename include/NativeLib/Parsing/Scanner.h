@@ -19,13 +19,6 @@ namespace nl
     {
         std::string_view TokenTypeToString(TokenType tokenType);
 
-        enum
-        {
-            SCANNER_OPTION_NONE = 0,
-            SCANNER_OPTION_NO_WARN_ON_OPEN = (1 << 0),
-            SCANNER_OPTION_DEFAULT = SCANNER_OPTION_NONE
-        };
-
         DeclareGenericException(OpenFileFailedException, "Could not open file");
         DeclareGenericException(ReadFailedException, "Could not read file");
 
@@ -46,6 +39,9 @@ namespace nl
             Scanner(const Scanner&) = delete;
             Scanner& operator =(const Scanner&) = delete;
             
+            bool IsOperatorsExtensionEnabled() const;
+            void EnableOperatorsExtension(bool enable = true);
+
             // Advances the scanner to the next token
             Token Next();
 
@@ -72,12 +68,15 @@ namespace nl
             const Token m_endOfFileToken;
             const Token m_errorToken;
 
+            bool m_bEnableOperatorsExtension;
+
             bool IsWhitespace(char c) const;
             bool IsKeyword(char c, bool first) const;
             bool IsHex(char c) const;
             bool SkipBlank();
             bool SkipSingleComment();
             bool SkipMultiComment();
+            bool ReadOperator(const char*& p, const char* end, OperatorType* operatorType);
 
             static int32_t CalculateLines(const char* start, const char* end);
         };

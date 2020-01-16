@@ -13,18 +13,21 @@ namespace nl
         {
         public:
             Token();
-            Token(int32_t line, TokenType tokenType);
-            Token(int32_t line, TokenType tokenType, std::string_view token);
-            Token(int32_t line, TokenType tokenType, const nl::String& token);
-            Token(int32_t line, TokenType tokenType, nl::String&& token);
+            Token(int32_t line, TokenType tokenType, OperatorType operatorType);
+            Token(int32_t line, TokenType tokenType, OperatorType operatorType, std::string_view token);
+            Token(int32_t line, TokenType tokenType, OperatorType operatorType, const nl::String& token);
+            Token(int32_t line, TokenType tokenType, OperatorType operatorType, nl::String&& token);
 
             operator TokenType() const;
+            operator OperatorType() const;
             operator std::string_view() const;
             operator nl::String() const;
             operator bool() const;
 
             bool operator ==(std::string_view value) const;
             bool operator !=(std::string_view value) const;
+            bool operator ==(char ch) const;
+            bool operator !=(char ch) const;
 
             std::string_view view() const;
             // data is NOT nullterminated!
@@ -44,11 +47,13 @@ namespace nl
             bool IsNumber() const;
             bool IsHex() const;
             bool IsFloat() const;
+            bool IsOperator() const;
 
             int32_t GetLine() const;
 
         private:
             TokenType m_tokenType;
+            OperatorType m_operatorType;
             nl::String m_transformedToken;
             std::string_view m_token;
             int32_t m_line;

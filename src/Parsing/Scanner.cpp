@@ -50,22 +50,25 @@ namespace nl
         }
 
         Scanner::Scanner() noexcept :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error)
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_bEnableOperatorsExtension(false)
         {
         }
 
         Scanner::Scanner(std::string_view str) :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error)
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_bEnableOperatorsExtension(false)
         {
             m_contextStack.Push(nl::ConstructShared<Context>(str.data(), str.data() + str.length()));
             SaveContext(); // save a duplicate
         }
 
         Scanner::Scanner(const char* str, size_t length) :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error)
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_bEnableOperatorsExtension(false)
         {
             nl_assert_if_debug(str != nullptr);
 
@@ -78,8 +81,9 @@ namespace nl
         }
 
         Scanner::Scanner(const nl::String& str) :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error)
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_bEnableOperatorsExtension(false)
         {
             auto container = nl::ConstructShared<nl::String>(str);
             m_contextStack.Push(nl::ConstructShared<Context>(container));
@@ -87,8 +91,9 @@ namespace nl
         }
 
         Scanner::Scanner(nl::String&& str) :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error)
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_bEnableOperatorsExtension(false)
         {
             auto container = nl::ConstructShared<nl::String>(std::move(str));
             m_contextStack.Push(nl::ConstructShared<Context>(container));
@@ -96,15 +101,17 @@ namespace nl
         }
 
         Scanner::Scanner(Scanner&& other) noexcept :
-            m_endOfFileToken(0, TokenType::EndOfFile),
-            m_errorToken(0, TokenType::Error),
-            m_contextStack(std::move(other.m_contextStack))
+            m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
+            m_errorToken(0, TokenType::Error, OperatorType::Unset),
+            m_contextStack(std::move(other.m_contextStack)),
+            m_bEnableOperatorsExtension(other.m_bEnableOperatorsExtension)
         {
         }
 
         Scanner& Scanner::operator =(Scanner&& other) noexcept
         {
             m_contextStack = std::move(other.m_contextStack);
+            m_bEnableOperatorsExtension = other.m_bEnableOperatorsExtension;
             return *this;
         }
 
@@ -239,11 +246,22 @@ namespace nl
             return false;
         }
 
+        bool Scanner::IsOperatorsExtensionEnabled() const
+        {
+            return m_bEnableOperatorsExtension;
+        }
+
+        void Scanner::EnableOperatorsExtension(bool enable)
+        {
+            m_bEnableOperatorsExtension = enable;
+        }
+
         Token Scanner::Next()
         {
             Context* const context = m_contextStack.GetTop();
 
             auto tokenType = TokenType::Error;
+            auto operatorType = OperatorType::Unset;
 
             const char*& p = context->ViewBegin;
             const char*& end = context->ViewEnd;
@@ -333,9 +351,9 @@ namespace nl
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
                     transformedToken))
-                    return Token(context->Line, tokenType, std::move(transformedToken));
+                    return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
+                return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(token_end - token_start)));
             }
 
             // single quoted strings
@@ -373,9 +391,9 @@ namespace nl
                     tokenType,
                     std::string_view(token_start, size_t(token_end - token_start)),
                     transformedToken))
-                    return Token(context->Line, tokenType, std::move(transformedToken));
+                    return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
+                return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(token_end - token_start)));
             }
 
             /*
@@ -406,27 +424,15 @@ namespace nl
                         IsHex(*p))
                         ++p;
 
-                    /*
-                tokenType = TokenType::String;
-                nl::String transformedToken;
-                if (TransformToken(
-                    tokenType,
-                    std::string_view(token_start, size_t(token_end - token_start)),
-                    transformedToken))
-                    return Token(context->Line, tokenType, std::move(transformedToken));
-
-                return Token(context->Line, tokenType, std::string_view(token_start, size_t(token_end - token_start)));
-                    */
-
                     tokenType = TokenType::Hex;
                     nl::String transformedToken;
                     if (TransformToken(
                         tokenType,
                         std::string_view(token_start, size_t(p - token_start)),
                         transformedToken))
-                        return Token(context->Line, tokenType, std::move(transformedToken));
+                        return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-                    return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
+                    return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
                 }
                 else
                 {
@@ -457,15 +463,15 @@ namespace nl
                         break;
                     }
 
-                    tokenType = TokenType::Number;
+                    tokenType = floating ? TokenType::Float : TokenType::Number;
                     nl::String transformedToken;
                     if (TransformToken(
                         tokenType,
                         std::string_view(token_start, size_t(p - token_start)),
                         transformedToken))
-                        return Token(context->Line, tokenType, std::move(transformedToken));
+                        return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-                    return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
+                    return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
                 }
             }
 
@@ -483,9 +489,16 @@ namespace nl
                     tokenType,
                     std::string_view(token_start, size_t(p - token_start)),
                     transformedToken))
-                    return Token(context->Line, tokenType, std::move(transformedToken));
+                    return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-                return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
+                return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
+            }
+
+            if (m_bEnableOperatorsExtension)
+            {
+                tokenType = TokenType::Operator;
+                if (ReadOperator(p, end, &operatorType))
+                    return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
             }
 
             ++p;
@@ -496,9 +509,9 @@ namespace nl
                 tokenType,
                 std::string_view(token_start, size_t(p - token_start)),
                 transformedToken))
-                return Token(context->Line, tokenType, std::move(transformedToken));
+                return Token(context->Line, tokenType, operatorType, std::move(transformedToken));
 
-            return Token(context->Line, tokenType, std::string_view(token_start, size_t(p - token_start)));
+            return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
         }
 
         Token Scanner::Peek()
