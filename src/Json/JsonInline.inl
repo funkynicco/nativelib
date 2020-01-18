@@ -197,7 +197,7 @@ namespace nl
         return false;
     }
 
-    inline JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
+    inline Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
     {
         char ch = json[i];
 
@@ -205,9 +205,9 @@ namespace nl
         {
             nl::String sb;
             if (!Json_ReadString(sb, json, i, parse_errors))
-                return NULL;
+                return nullptr;
 
-            return nl::memory::ConstructThrow<JsonString>(sb);
+            return ConstructSharedThrow<JsonString>(sb);
         }
 
         if (Json_CharIsDigit(ch) ||
@@ -218,37 +218,31 @@ namespace nl
             size_t temp_i = i;
             int64_t value1;
             if (Json_ReadNumber(&value1, json, i))
-                return nl::memory::ConstructThrow<JsonNumber>(value1);
+                return ConstructSharedThrow<JsonNumber>(value1);
 
             i = temp_i;
             double value2;
             if (Json_ReadDouble(&value2, json, i))
-                return nl::memory::ConstructThrow<JsonNumber>(value2);
+                return ConstructSharedThrow<JsonNumber>(value2);
 
             parse_errors.Add(nl::String::Format("Value at offset {} is neither number or double.", temp_i));
-            return NULL;
+            return nullptr;
         }
 
         if (ch == '{')
         {
-            auto obj = nl::memory::ConstructThrow<JsonObject>();
+            auto obj = ConstructSharedThrow<JsonObject>();
             if (!obj->Read(json, i, parse_errors))
-            {
-                nl::memory::Destroy(obj);
-                return NULL;
-            }
+                return nullptr;
 
             return obj;
         }
 
         if (ch == '[')
         {
-            auto ary = nl::memory::ConstructThrow<JsonArray>();
+            auto ary = ConstructSharedThrow<JsonArray>();
             if (!ary->Read(json, i, parse_errors))
-            {
-                nl::memory::Destroy(ary);
-                return NULL;
-            }
+                return nullptr;
 
             return ary;
         }
@@ -257,24 +251,24 @@ namespace nl
             memcmp(json.c_str() + i, "true", 4) == 0)
         {
             i += 4;
-            return nl::memory::ConstructThrow<JsonBoolean>(true);
+            return ConstructSharedThrow<JsonBoolean>(true);
         }
 
         if (i + 5 <= json.GetLength() &&
             memcmp(json.c_str() + i, "false", 5) == 0)
         {
             i += 5;
-            return nl::memory::ConstructThrow<JsonBoolean>(false);
+            return ConstructSharedThrow<JsonBoolean>(false);
         }
 
         if (i + 4 <= json.GetLength() &&
             memcmp(json.c_str() + i, "null", 4) == 0)
         {
             i += 4;
-            return nl::memory::ConstructThrow<JsonNull>();
+            return ConstructSharedThrow<JsonNull>();
         }
 
         parse_errors.Add(nl::String::Format("No suitable json value found at offset {}", i));
-        return NULL;
+        return nullptr;
     }
 }

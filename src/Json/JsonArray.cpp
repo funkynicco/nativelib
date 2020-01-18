@@ -16,10 +16,6 @@ namespace nl
 {
     JsonArray::~JsonArray()
     {
-        for (auto it : m_items)
-        {
-            nl::memory::Destroy(it);
-        }
     }
 
     bool JsonArray::Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
@@ -64,52 +60,52 @@ namespace nl
 
     void JsonArray::AddNull()
     {
-        AddBase(nl::memory::ConstructThrow<JsonNull>());
+        AddBase(ConstructSharedThrow<JsonNull>());
     }
 
-    void JsonArray::AddObject(JsonBase* obj)
+    void JsonArray::AddObject(Shared<JsonBase> obj)
     {
         AddBase(obj);
     }
 
-    JsonObject* JsonArray::AddObject()
+    Shared<JsonObject> JsonArray::AddObject()
     {
-        auto obj = nl::memory::ConstructThrow<JsonObject>();
-        AddBase(obj);
-        return obj;
-    }
-
-    JsonArray* JsonArray::AddArray()
-    {
-        auto obj = nl::memory::ConstructThrow<JsonArray>();
+        auto obj = ConstructSharedThrow<JsonObject>();
         AddBase(obj);
         return obj;
     }
 
-    JsonBoolean* JsonArray::AddBoolean(bool value)
+    Shared<JsonArray> JsonArray::AddArray()
     {
-        auto obj = nl::memory::ConstructThrow<JsonBoolean>(value);
+        auto obj = ConstructSharedThrow<JsonArray>();
         AddBase(obj);
         return obj;
     }
 
-    JsonString* JsonArray::AddString(const char* value)
+    Shared<JsonBoolean> JsonArray::AddBoolean(bool value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonString>(value);
+        auto obj = ConstructSharedThrow<JsonBoolean>(value);
         AddBase(obj);
         return obj;
     }
 
-    JsonNumber* JsonArray::AddNumber(int64_t value)
+    Shared<JsonString> JsonArray::AddString(const char* value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
+        auto obj = ConstructSharedThrow<JsonString>(value);
         AddBase(obj);
         return obj;
     }
 
-    JsonNumber* JsonArray::AddNumber(double value)
+    Shared<JsonNumber> JsonArray::AddNumber(int64_t value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
+        auto obj = ConstructSharedThrow<JsonNumber>(value);
+        AddBase(obj);
+        return obj;
+    }
+
+    Shared<JsonNumber> JsonArray::AddNumber(double value)
+    {
+        auto obj = ConstructSharedThrow<JsonNumber>(value);
         AddBase(obj);
         return obj;
     }

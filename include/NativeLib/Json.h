@@ -8,7 +8,7 @@
 #include <NativeLib/Allocators.h>
 #include <NativeLib/String.h>
 #include <NativeLib/Containers/Vector.h>
-#include <NativeLib/RAII/Scoped.h>
+#include <NativeLib/RAII/Shared.h>
 #include <NativeLib/Containers/Map.h>
 
 #include <stdint.h>
@@ -64,7 +64,7 @@ namespace nl
         JsonType GetType() const { return m_type; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
         JsonBase(JsonType type);
         JsonType m_type;
     };
@@ -105,20 +105,20 @@ namespace nl
 
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Object; }
 
-        JsonBase* GetMember(const char* name)
+        Shared<JsonBase> GetMember(const char* name)
         {
             auto it = m_members.find(name);
             return it != m_members.end() ? it->second : nullptr;
         }
 
-        const JsonBase* GetMember(const char* name) const
+        Shared<const JsonBase> GetMember(const char* name) const
         {
             auto it = m_members.find(name);
             return it != m_members.end() ? it->second : nullptr;
         }
 
         template <typename T>
-        T* GetMember(const char* name)
+        Shared<T> GetMember(const char* name)
         {
             auto pMember = GetMember(name);
             if (!pMember)
@@ -127,53 +127,53 @@ namespace nl
             if (!T::IsOfType(pMember->GetType()))
                 throw IncorrectMemberTypeException();
 
-            return static_cast<T*>(pMember);
+            return Shared<T>::Cast(pMember);
         }
 
         template <typename T>
-        const T* GetMember(const char* name) const { return static_cast<const T*>(GetMember(name)); }
+        Shared<const T> GetMember(const char* name) const
+        {
+            return Shared<const T>::Cast(GetMember(name));
+        }
 
         size_t GetCount() const { return m_members.GetCount(); }
-        nl::Map<nl::String, JsonBase*>& GetMembers() { return m_members; }
-        const nl::Map<nl::String, JsonBase*>& GetMembers() const { return m_members; }
+        nl::Map<nl::String, Shared<JsonBase>>& GetMembers() { return m_members; }
+        const nl::Map<nl::String, Shared<JsonBase>>& GetMembers() const { return m_members; }
 
         void SetNull(const char* pszName);
-        void SetObject(const char* pszName, JsonBase* obj);
-        JsonObject* SetObject(const char* pszName);
-        JsonArray* SetArray(const char* pszName);
-        JsonBoolean* SetBoolean(const char* pszName, bool value);
-        JsonString* SetString(const char* pszName, const char* value);
-        JsonNumber* SetNumber(const char* pszName, int64_t value);
-        JsonNumber* SetNumber(const char* pszName, double value);
+        void SetObject(const char* pszName, Shared<JsonBase> obj);
+        Shared<JsonObject> SetObject(const char* pszName);
+        Shared<JsonArray> SetArray(const char* pszName);
+        Shared<JsonBoolean> SetBoolean(const char* pszName, bool value);
+        Shared<JsonString> SetString(const char* pszName, const char* value);
+        Shared<JsonNumber> SetNumber(const char* pszName, int64_t value);
+        Shared<JsonNumber> SetNumber(const char* pszName, double value);
 
-        JsonNumber* SetNumber(const char* pszName, float value) { return SetNumber(pszName, (double)value); }
-        JsonNumber* SetNumber(const char* pszName, char value) { return SetNumber(pszName, (int64_t)value); }
-        JsonNumber* SetNumber(const char* pszName, uint8_t value) { return SetNumber(pszName, (int64_t)value); }
-        JsonNumber* SetNumber(const char* pszName, int16_t value) { return SetNumber(pszName, (int64_t)value); }
-        JsonNumber* SetNumber(const char* pszName, int32_t value) { return SetNumber(pszName, (int64_t)value); }
-        JsonNumber* SetNumber(const char* pszName, uint32_t value) { return SetNumber(pszName, (int64_t)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, float value) { return SetNumber(pszName, (double)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, char value) { return SetNumber(pszName, (int64_t)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, uint8_t value) { return SetNumber(pszName, (int64_t)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, int16_t value) { return SetNumber(pszName, (int64_t)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, int32_t value) { return SetNumber(pszName, (int64_t)value); }
+        Shared<JsonNumber> SetNumber(const char* pszName, uint32_t value) { return SetNumber(pszName, (int64_t)value); }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
-        friend nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
         bool Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         template <typename T>
-        void SetBase(const char* pszName, T* pItem)
+        void SetBase(const char* pszName, Shared<T> pItem)
         {
             auto it = m_members.find(pszName);
             if (it != m_members.end())
-            {
-                nl::memory::Destroy(it->second);
                 m_members.Remove(it);
-            }
 
             m_members.Add(pszName, pItem);
         }
 
-        nl::Map<nl::String, JsonBase*> m_members;
+        nl::Map<nl::String, Shared<JsonBase>> m_members;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -194,42 +194,48 @@ namespace nl
         static constexpr bool IsOfType(JsonType type) { return type == JsonType::Array; }
 
         size_t GetCount() const { return m_items.GetCount(); }
-        JsonBase* GetItem(size_t index) { return m_items[index]; }
-        const JsonBase* GetItem(size_t index) const { return m_items[index]; }
+        Shared<JsonBase> GetItem(size_t index) { return m_items[index]; }
+        Shared<const JsonBase> GetItem(size_t index) const { return m_items[index]; }
 
         template <typename T>
-        T* GetItem(size_t index) { return static_cast<T*>(m_items[index]); }
+        Shared<T> GetItem(size_t index)
+        {
+            return Shared<T>::Cast(m_items[index]);
+        }
 
         template <typename T>
-        const T* GetItem(size_t index) const { return static_cast<T*>(m_items[index]); }
+        Shared<const T> GetItem(size_t index) const
+        {
+            return Shared<const T>::Cast(m_items[index]);
+        }
 
         void AddNull();
-        void AddObject(JsonBase* obj);
-        JsonObject* AddObject();
-        JsonArray* AddArray();
-        JsonBoolean* AddBoolean(bool value);
-        JsonString* AddString(const char* value);
-        JsonNumber* AddNumber(int64_t value);
-        JsonNumber* AddNumber(double value);
+        void AddObject(Shared<JsonBase> obj);
+        Shared<JsonObject> AddObject();
+        Shared<JsonArray> AddArray();
+        Shared<JsonBoolean> AddBoolean(bool value);
+        Shared<JsonString> AddString(const char* value);
+        Shared<JsonNumber> AddNumber(int64_t value);
+        Shared<JsonNumber> AddNumber(double value);
 
-        JsonNumber* AddNumber(float value) { return AddNumber((double)value); }
-        JsonNumber* AddNumber(char value) { return AddNumber((int64_t)value); }
-        JsonNumber* AddNumber(uint8_t value) { return AddNumber((int64_t)value); }
-        JsonNumber* AddNumber(int16_t value) { return AddNumber((int64_t)value); }
-        JsonNumber* AddNumber(int32_t value) { return AddNumber((int64_t)value); }
-        JsonNumber* AddNumber(uint32_t value) { return AddNumber((int64_t)value); }
+        Shared<JsonNumber> AddNumber(float value) { return AddNumber((double)value); }
+        Shared<JsonNumber> AddNumber(char value) { return AddNumber((int64_t)value); }
+        Shared<JsonNumber> AddNumber(uint8_t value) { return AddNumber((int64_t)value); }
+        Shared<JsonNumber> AddNumber(int16_t value) { return AddNumber((int64_t)value); }
+        Shared<JsonNumber> AddNumber(int32_t value) { return AddNumber((int64_t)value); }
+        Shared<JsonNumber> AddNumber(uint32_t value) { return AddNumber((int64_t)value); }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
-        friend nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
         bool Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
-        nl::Vector<JsonBase*> m_items;
+        nl::Vector<Shared<JsonBase>> m_items;
 
         template <typename T>
-        void AddBase(T* pItem)
+        void AddBase(Shared<T> pItem)
         {
             m_items.Add(pItem);
         }
@@ -262,7 +268,7 @@ namespace nl
         void SetValue(const nl::String& value) { m_value = value; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         nl::String m_value;
@@ -330,7 +336,7 @@ namespace nl
         }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         bool m_bIsDouble;
@@ -366,7 +372,7 @@ namespace nl
         void SetValue(bool value) { m_value = value; }
 
     protected:
-        friend JsonBase* Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
+        friend Shared<JsonBase> Json_ReadValue(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors);
 
     private:
         bool m_value;
@@ -376,25 +382,25 @@ namespace nl
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
+    Shared<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors);
 
     template <typename T>
-    inline nl::Scoped<T> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
+    inline Shared<T> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
     {
         auto ptr = ParseJson(pszJson, parse_errors);
         if (!ptr)
             return nullptr;
 
-        return nl::MakeScopedDestroy<T>(static_cast<T*>(ptr.Swap(nullptr)));
+        return Shared<T>::Cast(ptr);
     }
 
-    bool GenerateJsonString(nl::String& output, const JsonBase* pJson);
-    nl::Scoped<JsonBase> CreateJsonObject(JsonType type);
+    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson);
+    Shared<JsonBase> CreateJsonObject(JsonType type);
 
     template <typename T>
-    inline nl::Scoped<T> CreateJsonObject()
+    inline Shared<T> CreateJsonObject()
     {
-        nl::Scoped<JsonBase> ptr;
+        Shared<JsonBase> ptr;
 
         if constexpr (std::is_same_v<T, JsonNull>)
             ptr = CreateJsonObject(JsonType::Null);
@@ -411,6 +417,6 @@ namespace nl
         else
             throw UnsupportedJsonTypeException();
 
-        return nl::MakeScopedDestroy<T>(static_cast<T*>(ptr.Swap(nullptr)));
+        return Shared<T>::Cast(ptr);
     }
 }

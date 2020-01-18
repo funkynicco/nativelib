@@ -12,7 +12,7 @@
 
 namespace nl
 {
-    nl::Scoped<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
+    Shared<JsonBase> ParseJson(const char* pszJson, nl::Vector<nl::String>& parse_errors)
     {
         nl::String json = pszJson;
 
@@ -25,17 +25,17 @@ namespace nl
             return nullptr;
         }
 
-        nl::Scoped<JsonBase> obj;
+        Shared<JsonBase> obj;
 
         if (json[i] == '{')
         {
-            obj = nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonObject>());
+            obj = ConstructSharedThrow<JsonObject>();
             if (!static_cast<JsonObject*>(obj.get())->Read(json, i, parse_errors))
                 return nullptr;
         }
         else if (json[i] == '[')
         {
-            obj = nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonArray>());
+            obj = ConstructSharedThrow<JsonArray>();
             if (!static_cast<JsonArray*>(obj.get())->Read(json, i, parse_errors))
                 return nullptr;
         }
@@ -43,15 +43,15 @@ namespace nl
         return obj;
     }
 
-    inline bool JsonGenerateProcessBase(nl::String& output, const JsonBase* pJson)
+    inline bool JsonGenerateProcessBase(nl::String& output, Shared<const JsonBase> pJson)
     {
         if (pJson->GetType() == JsonType::Boolean)
         {
-            output.Append(static_cast<const JsonBoolean*>(pJson)->GetValue() ? "true" : "false");
+            output.Append(Shared<const JsonBoolean>::Cast(pJson)->GetValue() ? "true" : "false");
         }
         else if (pJson->GetType() == JsonType::String)
         {
-            const nl::String& s = static_cast<const JsonString*>(pJson)->GetValue();
+            const nl::String& s = Shared<const JsonString>::Cast(pJson)->GetValue();
             output.EnsureCapacity(output.GetCapacity() + s.GetLength() + 2);
             output.Append('"');
             for (size_t i = 0; i < s.GetLength(); ++i)
@@ -91,7 +91,7 @@ namespace nl
         {
             char buffer[1024];
 
-            auto num = static_cast<const JsonNumber*>(pJson);
+            auto num = Shared<const JsonNumber>::Cast(pJson);
             if (num->IsDouble())
                 sprintf_s(buffer, "%lf", num->GetDouble());
             else
@@ -103,7 +103,7 @@ namespace nl
         {
             output.Append('[');
 
-            auto pArray = static_cast<const JsonArray*>(pJson);
+            auto pArray = Shared<const JsonArray>::Cast(pJson);
             for (size_t i = 0; i < pArray->GetCount(); ++i)
             {
                 if (i > 0)
@@ -120,7 +120,7 @@ namespace nl
             output.Append('{');
 
             int32_t n = 0;
-            for (auto it : static_cast<const JsonObject*>(pJson)->GetMembers())
+            for (auto it : Shared<const JsonObject>::Cast(pJson)->GetMembers())
             {
                 if (n++ > 0)
                     output.Append(',');
@@ -146,29 +146,29 @@ namespace nl
         return true;
     }
 
-    bool GenerateJsonString(nl::String& output, const JsonBase* pJson)
+    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson)
     {
         output.Clear();
 
         return JsonGenerateProcessBase(output, pJson); // recursive
     }
 
-    nl::Scoped<JsonBase> CreateJsonObject(JsonType type)
+    Shared<JsonBase> CreateJsonObject(JsonType type)
     {
         switch (type)
         {
         case JsonType::Null:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonNull>());
+            return ConstructSharedThrow<JsonNull>();
         case JsonType::Object:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonObject>());
+            return ConstructSharedThrow<JsonObject>();
         case JsonType::Array:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonArray>());
+            return ConstructSharedThrow<JsonArray>();
         case JsonType::String:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonString>());
+            return ConstructSharedThrow<JsonString>();
         case JsonType::Number:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonNumber>());
+            return ConstructSharedThrow<JsonNumber>();
         case JsonType::Boolean:
-            return nl::MakeScopedDestroy<JsonBase>(nl::memory::ConstructThrow<JsonBoolean>());
+            return ConstructSharedThrow<JsonBoolean>();
         }
 
         throw UnsupportedJsonTypeException();

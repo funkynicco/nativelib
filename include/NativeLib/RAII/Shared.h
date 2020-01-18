@@ -11,7 +11,7 @@ namespace nl
     namespace shared_internals
     {
         template <typename TObject>
-        using Callback = std::function<void(TObject*)>;
+        using Callback = void(*)(TObject*);
 
         template <typename TObject>
         struct SharedObject
@@ -28,7 +28,7 @@ namespace nl
             }
         };
 
-#ifdef _WIN64
+#ifdef NL_ARCHITECTURE_X64
         constexpr size_t ArchitectureAlignment = 16;
 #else
         constexpr size_t ArchitectureAlignment = 8;
@@ -59,9 +59,9 @@ namespace nl
         {
         }
 
-        Shared(SharedObjectType* shared) :
+        Shared(SharedObjectType* shared, bool externalShared = true) :
             m_shared(shared),
-            m_externalShared(true)
+            m_externalShared(externalShared)
         {
         }
 
@@ -89,6 +89,26 @@ namespace nl
             m_externalShared = other.m_externalShared;
         }
 
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Shared(Shared<TOther>&& other) :
+            m_shared((SharedObjectType*)other.m_shared),
+            m_externalShared(other.m_externalShared)
+        {
+            other.m_shared = nullptr;
+        }
+
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Shared(const Shared<TOther>& other)
+        {
+            nl::threading::Interlocked::Increment(&other.m_shared->References);
+            m_shared = (SharedObjectType*)other.m_shared;
+            m_externalShared = other.m_externalShared;
+        }
+
         ~Shared()
         {
             Release();
@@ -106,7 +126,30 @@ namespace nl
         {
             nl::threading::Interlocked::Increment(&other.m_shared->References);
             Release();
-            m_shared = other.m_shared;
+            m_shared = (SharedObjectType*)other.m_shared;
+            m_externalShared = other.m_externalShared;
+            return *this;
+        }
+
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Shared& operator =(Shared<TOther>&& other)
+        {
+            m_shared = (SharedObjectType*)other.m_shared;
+            other.m_shared = nullptr;
+            m_externalShared = other.m_externalShared;
+            return *this;
+        }
+
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Shared& operator =(const Shared<TOther>& other)
+        {
+            nl::threading::Interlocked::Increment(&other.m_shared->References);
+            Release();
+            m_shared = (SharedObjectType*)other.m_shared;
             m_externalShared = other.m_externalShared;
             return *this;
         }
@@ -165,7 +208,25 @@ namespace nl
             m_shared = nullptr;
         }
 
-    private:
+        template <
+            typename TBase,
+            std::enable_if_t<std::is_base_of_v<TBase, TObject>, int> * = nullptr>
+            static Shared<TObject> Cast(Shared<TBase>&& base)
+        {
+            auto shared = base.m_shared;
+            base.m_shared = nullptr;
+            return Shared<TObject>((SharedObjectType*)shared, base.m_externalShared);
+        }
+
+        template <
+            typename TBase,
+            std::enable_if_t<std::is_base_of_v<TBase, TObject>, int> * = nullptr>
+            static Shared<TObject> Cast(const Shared<TBase>& base)
+        {
+            nl::threading::Interlocked::Increment(&base.m_shared->References);
+            return Shared<TObject>((SharedObjectType*)base.m_shared, base.m_externalShared);
+        }
+
         SharedObjectType* m_shared;
         bool m_externalShared;
     };

@@ -2,6 +2,14 @@
 
 #include <stdint.h>
 
+#if defined(NL_ARCHITECTURE_X64)
+static_assert(sizeof(void*) == 8, "Platform expected to be x64 but pointers are 32bit!");
+#elif defined(NL_ARCHITECTURE_X86)
+static_assert(sizeof(void*) == 4, "Platform expected to be x86 but pointers are 64bit!");
+#else
+#error No platform architecture defined!
+#endif
+
 #ifdef _WIN32
 #define NL_PLATFORM_WINDOWS
 #else

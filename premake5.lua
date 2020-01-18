@@ -20,11 +20,15 @@ workspace "nativelib"
     filter "platforms:Win32"
         architecture "x86"
         defines {
+            "NL_ARCHITECTURE_X86",
             "WIN32"
         }
     
     filter "platforms:x64"
         architecture "x64"
+        defines {
+            "NL_ARCHITECTURE_X64"
+		}
     
     filter {}
 

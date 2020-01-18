@@ -47,7 +47,7 @@ namespace nl
         protected:
             void HandleRequest(class PipeClient* client, class DataBuffer& buffer, int requestId);
             void SendError(class PipeClient* client, int requestId, const char* message);
-            void SendJson(class PipeClient* client, int requestId, const nl::Scoped<nl::JsonObject>& json);
+            void SendJson(class PipeClient* client, int requestId, const nl::Shared<nl::JsonObject>& json);
 
         private:
             pfnEventHandler m_pfnEventHandler;

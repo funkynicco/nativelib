@@ -11,30 +11,40 @@ namespace nl
     class Scoped
     {
     public:
-        using Callback = std::function<void(TObject*)>;
+        using Callback = void(*)(TObject*);
 
         Scoped() :
             m_obj(nullptr),
-            m_func(nullptr)
+            m_deleter(nullptr)
         {
         }
 
         Scoped(nullptr_t) :
             m_obj(nullptr),
-            m_func(nullptr)
+            m_deleter(nullptr)
         {
         }
 
         Scoped(TObject* obj, Callback func) :
             m_obj(obj),
-            m_func(func)
+            m_deleter(func)
         {
         }
 
         Scoped(Scoped&& other) noexcept
         {
             m_obj = other.m_obj;
-            m_func = other.m_func;
+            m_deleter = other.m_deleter;
+            other.m_obj = nullptr;
+        }
+
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Scoped(Scoped<TOther>&& other) noexcept
+        {
+            m_obj = other.m_obj;
+            m_deleter = (Callback)other.m_deleter;
             other.m_obj = nullptr;
         }
 
@@ -50,7 +60,20 @@ namespace nl
             Release();
 
             m_obj = other.m_obj;
-            m_func = other.m_func;
+            m_deleter = other.m_deleter;
+            other.m_obj = nullptr;
+            return *this;
+        }
+
+        template <
+            typename TOther,
+            std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
+        Scoped& operator =(Scoped<TOther>&& other) noexcept
+        {
+            Release();
+
+            m_obj = other.m_obj;
+            m_deleter = (Callback)other.m_deleter;
             other.m_obj = nullptr;
             return *this;
         }
@@ -97,7 +120,7 @@ namespace nl
         {
             if (m_obj)
             {
-                m_func(m_obj);
+                m_deleter(m_obj);
                 m_obj = nullptr;
             }
         }
@@ -114,13 +137,22 @@ namespace nl
             return temp;
         }
 
-    private:
+        template <
+            typename TBase,
+            std::enable_if_t<std::is_base_of_v<TBase, TObject>, int>* = nullptr>
+        static Scoped<TObject> Cast(Scoped<TBase>&& base)
+        {
+            auto obj = base.m_obj;
+            base.m_obj = nullptr;
+            return Scoped<TObject>((TObject*)obj, (Callback)base.m_deleter);
+        }
+
         TObject* m_obj;
-        Callback m_func;
+        Callback m_deleter;
     };
 
     template <typename T>
-    inline Scoped<T> MakeScoped(T* value, std::function<void(T*)> callback)
+    inline Scoped<T> MakeScoped(T* value, typename Scoped<T>::Callback callback)
     {
         return Scoped<T>(value, callback);
     }

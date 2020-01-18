@@ -11,6 +11,8 @@
 #include <NativeLib/SystemLayer/SystemLayer.h>
 #include <NativeLib/Allocators.h>
 #include <NativeLib/Threading/Interlocked.h>
+#include <NativeLib/RAII/Scoped.h>
+#include <NativeLib/RAII/Shared.h>
 
 #ifdef NL_PLATFORM_WINDOWS
 #include <Windows.h>
@@ -199,7 +201,7 @@ namespace nl
                 return;
             }
 
-            auto requestJson = nl::MakeScopedDestroy<nl::JsonObject>(static_cast<nl::JsonObject*>(xb.Swap(nullptr))); // xb is JsonBase, this convert it to JsonObject
+            auto requestJson = nl::Shared<nl::JsonObject>::Cast(xb);
             auto responseJson = nl::CreateJsonObject<nl::JsonObject>();
 
             try
@@ -215,7 +217,7 @@ namespace nl
             // Send back result ...
             auto resp = nl::CreateJsonObject<nl::JsonObject>();
             resp->SetNull("error");
-            resp->SetObject("result", responseJson.Swap(nullptr)); // takes ownership
+            resp->SetObject("result", responseJson);
             SendJson(client, requestId, resp);
         }
 
@@ -226,10 +228,10 @@ namespace nl
             SendJson(client, requestId, obj);
         }
 
-        void Server::SendJson(class PipeClient* client, int requestId, const nl::Scoped<nl::JsonObject>& json)
+        void Server::SendJson(class PipeClient* client, int requestId, const nl::Shared<nl::JsonObject>& json)
         {
             nl::String str;
-            nl::GenerateJsonString(str, json.get());
+            nl::GenerateJsonString(str, json);
 
             DataBuffer out;
             out << 0 << requestId; // packet size and request id

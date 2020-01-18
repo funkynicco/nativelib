@@ -16,10 +16,6 @@ namespace nl
 {
     JsonObject::~JsonObject()
     {
-        for (auto it : m_members)
-        {
-            nl::memory::Destroy(it.second);
-        }
     }
 
     bool JsonObject::Read(const nl::String& json, size_t& i, nl::Vector<nl::String>& parse_errors)
@@ -88,52 +84,52 @@ namespace nl
 
     void JsonObject::SetNull(const char* pszName)
     {
-        SetBase(pszName, nl::memory::ConstructThrow<JsonNull>());
+        SetBase(pszName, ConstructSharedThrow<JsonNull>());
     }
 
-    void JsonObject::SetObject(const char* pszName, JsonBase* obj)
+    void JsonObject::SetObject(const char* pszName, Shared<JsonBase> obj)
     {
         SetBase(pszName, obj);
     }
 
-    JsonObject* JsonObject::SetObject(const char* pszName)
+    Shared<JsonObject> JsonObject::SetObject(const char* pszName)
     {
-        auto obj = nl::memory::ConstructThrow<JsonObject>();
-        SetBase(pszName, obj);
-        return obj;
-    }
-
-    JsonArray* JsonObject::SetArray(const char* pszName)
-    {
-        auto obj = nl::memory::ConstructThrow<JsonArray>();
+        auto obj = ConstructSharedThrow<JsonObject>();
         SetBase(pszName, obj);
         return obj;
     }
 
-    JsonBoolean* JsonObject::SetBoolean(const char* pszName, bool value)
+    Shared<JsonArray> JsonObject::SetArray(const char* pszName)
     {
-        auto obj = nl::memory::ConstructThrow<JsonBoolean>(value);
+        auto obj = ConstructSharedThrow<JsonArray>();
         SetBase(pszName, obj);
         return obj;
     }
 
-    JsonString* JsonObject::SetString(const char* pszName, const char* value)
+    Shared<JsonBoolean> JsonObject::SetBoolean(const char* pszName, bool value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonString>(value);
+        auto obj = ConstructSharedThrow<JsonBoolean>(value);
         SetBase(pszName, obj);
         return obj;
     }
 
-    JsonNumber* JsonObject::SetNumber(const char* pszName, int64_t value)
+    Shared<JsonString> JsonObject::SetString(const char* pszName, const char* value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
+        auto obj = ConstructSharedThrow<JsonString>(value);
         SetBase(pszName, obj);
         return obj;
     }
 
-    JsonNumber* JsonObject::SetNumber(const char* pszName, double value)
+    Shared<JsonNumber> JsonObject::SetNumber(const char* pszName, int64_t value)
     {
-        auto obj = nl::memory::ConstructThrow<JsonNumber>(value);
+        auto obj = ConstructSharedThrow<JsonNumber>(value);
+        SetBase(pszName, obj);
+        return obj;
+    }
+
+    Shared<JsonNumber> JsonObject::SetNumber(const char* pszName, double value)
+    {
+        auto obj = ConstructSharedThrow<JsonNumber>(value);
         SetBase(pszName, obj);
         return obj;
     }
