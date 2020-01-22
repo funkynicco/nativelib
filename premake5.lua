@@ -5,8 +5,7 @@ workspace "nativelib"
     objdir          "build/%{cfg.action}/obj/%{prj.name}/%{cfg.longname}"
     --characterset    "MBCS"
     cppdialect      "c++17"
-    systemversion   "latest"
-    staticruntime   "on"
+    systemversion   "10.0.18362.0"
 
     defines {
         "_LIB"
@@ -50,7 +49,8 @@ workspace "nativelib"
         }
     
     filter "configurations:Release"
-        optimize "on"
+        optimize        "on"
+        staticruntime   "on"
 
         defines {
             "NDEBUG"

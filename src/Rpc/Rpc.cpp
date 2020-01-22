@@ -206,7 +206,7 @@ namespace nl
 
             try
             {
-                it->second(this, client->GetId(), requestJson.get(), responseJson.get());
+                it->second(this, client->GetId(), requestJson, responseJson);
             }
             catch (Exception & ex)
             {
@@ -228,7 +228,7 @@ namespace nl
             SendJson(client, requestId, obj);
         }
 
-        void Server::SendJson(class PipeClient* client, int requestId, const nl::Shared<nl::JsonObject>& json)
+        void Server::SendJson(class PipeClient* client, int requestId, nl::Shared<const nl::JsonObject> json)
         {
             nl::String str;
             nl::GenerateJsonString(str, json);

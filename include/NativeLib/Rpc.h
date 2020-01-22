@@ -8,6 +8,7 @@
 #include <NativeLib/Json.h>
 #include <NativeLib/Exceptions.h>
 #include <NativeLib/String.h>
+#include <NativeLib/RAII/Shared.h>
 
 namespace nl
 {
@@ -22,7 +23,7 @@ namespace nl
         };
 
         typedef void(*pfnEventHandler)(class Server* rpc, Events event, intptr_t data);
-        typedef void(*pfn)(class Server* rpc, int32_t client_id, const nl::JsonObject* request, nl::JsonObject* response);
+        typedef void(*pfn)(class Server* rpc, int32_t client_id, nl::Shared<const nl::JsonObject> request, nl::Shared<nl::JsonObject> response);
 
         class Server
         {
@@ -47,7 +48,7 @@ namespace nl
         protected:
             void HandleRequest(class PipeClient* client, class DataBuffer& buffer, int requestId);
             void SendError(class PipeClient* client, int requestId, const char* message);
-            void SendJson(class PipeClient* client, int requestId, const nl::Shared<nl::JsonObject>& json);
+            void SendJson(class PipeClient* client, int requestId, nl::Shared<const nl::JsonObject> json);
 
         private:
             pfnEventHandler m_pfnEventHandler;
