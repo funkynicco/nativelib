@@ -34,7 +34,7 @@ namespace nl
 
             operator bool() const { return m_lp != nullptr; }
             operator void* () { return m_lp; }
-            operator const void*() const { return m_lp; }
+            operator const void* () const { return m_lp; }
 
             size_t GetSize() const;
 
@@ -49,8 +49,52 @@ namespace nl
 
         private:
             void* m_lp;
-            
+
             Memory(void* lp) noexcept;
+        };
+
+        template <typename T>
+        class GenericMemory
+        {
+        public:
+            GenericMemory(Memory&& mem) noexcept :
+                m_memory(std::move(mem))
+            {
+            }
+
+            GenericMemory(GenericMemory<T>&& mem) noexcept :
+                m_memory(std::move(mem.m_memory))
+            {
+            }
+
+            GenericMemory& operator =(GenericMemory&& other) noexcept
+            {
+                m_memory = std::move(other.m_memory);
+                return *this;
+            }
+
+            // unsupported constructors & assignments
+            GenericMemory(const GenericMemory&) = delete;
+            GenericMemory& operator =(const GenericMemory&) noexcept = delete;
+
+            T* Get() { return m_memory.Get<T>(); }
+            const T* Get() const { return m_memory.Get<T>(); }
+
+            T* operator ->() { return m_memory.Get<T>(); }
+            const T* operator ->() const { return m_memory.Get<T>(); }
+
+            operator T* () { return m_memory.Get<T>(); }
+            operator const T* () const { return m_memory.Get<T>(); }
+
+            size_t GetSize() const { return m_memory.GetSize(); }
+
+            static GenericMemory<T> Allocate(size_t bytesSize)
+            {
+                return GenericMemory<T>(std::move(Memory::Allocate(bytesSize)));
+            }
+
+        private:
+            Memory m_memory;
         };
 
         void* Allocate(size_t size);
