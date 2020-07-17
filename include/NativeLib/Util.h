@@ -15,7 +15,7 @@ namespace nl::util
     }
 
     template <typename T>
-    constexpr T Clamp(T min, T max, T value)
+    constexpr T Clamp(T value, T min, T max)
     {
         if (value < min)
             return min;
