@@ -15,7 +15,7 @@ namespace nl
         // memory class
 
         Memory::MemoryDataInfo Memory::s_zeroSizeData = { 1, 0 };
-        const void* const Memory::s_zeroSizeDataPointer = reinterpret_cast<const void*>(&Memory::s_zeroSizeData + 1);
+        void* Memory::s_zeroSizeDataPointer = reinterpret_cast<void*>(&Memory::s_zeroSizeData + 1);
 
         Memory::Memory(void* lp) noexcept :
             m_lp(lp)
@@ -26,15 +26,9 @@ namespace nl
         {
             auto info = reinterpret_cast<MemoryDataInfo*>(m_lp) - 1;
             if (nl::threading::Interlocked::Decrement(&info->References) == 0)
+            {
                 nl::memory::Free(info);
-        }
-
-        Memory::Memory(const Memory& memory) noexcept
-        {
-            auto info = reinterpret_cast<MemoryDataInfo*>(memory.m_lp) - 1;
-            nl::threading::Interlocked::Increment(&info->References);
-
-            m_lp = memory.m_lp;
+            }
         }
 
         Memory::Memory(Memory&& memory) noexcept
@@ -42,20 +36,7 @@ namespace nl
             m_lp = memory.m_lp;
 
             nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
-            memory.m_lp = &s_zeroSizeData;
-        }
-
-        Memory& Memory::operator =(const Memory& memory) noexcept
-        {
-            auto info = reinterpret_cast<MemoryDataInfo*>(m_lp) - 1;
-            if (nl::threading::Interlocked::Decrement(&info->References) == 0)
-                nl::memory::Free(info);
-
-            info = reinterpret_cast<MemoryDataInfo*>(memory.m_lp) - 1;
-            nl::threading::Interlocked::Increment(&info->References);
-
-            m_lp = memory.m_lp;
-            return *this;
+            memory.m_lp = s_zeroSizeDataPointer;
         }
 
         Memory& Memory::operator =(Memory&& memory) noexcept
@@ -67,7 +48,7 @@ namespace nl
             m_lp = memory.m_lp;
 
             nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
-            memory.m_lp = &s_zeroSizeData;
+            memory.m_lp = s_zeroSizeDataPointer;
             return *this;
         }
 
@@ -84,7 +65,7 @@ namespace nl
                 nl_assert_if_debug(size != 0);
 
                 nl::threading::Interlocked::Increment(&s_zeroSizeData.References);
-                return Memory(&s_zeroSizeData);
+                return Memory(s_zeroSizeDataPointer);
             }
 
             auto info = reinterpret_cast<MemoryDataInfo*>(nl::memory::Allocate(sizeof(MemoryDataInfo) + size));
