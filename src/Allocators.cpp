@@ -28,7 +28,7 @@ namespace nl
             if (nl::threading::Interlocked::Decrement(&info->References) == 0)
             {
                 nl::memory::Free(info);
-        }
+            }
         }
 
         Memory::Memory(Memory&& memory) noexcept
