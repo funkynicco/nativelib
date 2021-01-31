@@ -43,7 +43,15 @@ namespace nl
         return obj;
     }
 
-    inline bool JsonGenerateProcessBase(nl::String& output, Shared<const JsonBase> pJson)
+    inline void JsonOutputFormattingIndentation(nl::String& output, JsonFormattingOptions* formatting, int count)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            output.Append(formatting->Indentation);
+        }
+    }
+
+    inline bool JsonGenerateProcessBase(nl::String& output, Shared<const JsonBase> pJson, JsonFormattingOptions* formatting, int indentation)
     {
         if (pJson->GetType() == JsonType::Boolean)
         {
@@ -104,13 +112,35 @@ namespace nl
             output.Append('[');
 
             auto pArray = Shared<const JsonArray>::Cast(pJson);
-            for (size_t i = 0; i < pArray->GetCount(); ++i)
+            if (pArray->GetCount() != 0)
             {
-                if (i > 0)
-                    output.Append(',');
+                if (formatting)
+                {
+                    output.Append('\n');
+                    JsonOutputFormattingIndentation(output, formatting, indentation + 1);
+                }
 
-                if (!JsonGenerateProcessBase(output, pArray->GetItem(i)))
-                    return false;
+                for (size_t i = 0; i < pArray->GetCount(); ++i)
+                {
+                    if (i > 0)
+                    {
+                        output.Append(',');
+                        if (formatting)
+                        {
+                            output.Append('\n');
+                            JsonOutputFormattingIndentation(output, formatting, indentation + 1);
+                        }
+                    }
+
+                    if (!JsonGenerateProcessBase(output, pArray->GetItem(i), formatting, indentation + 1))
+                        return false;
+                }
+
+                if (formatting)
+                {
+                    output.Append('\n');
+                    JsonOutputFormattingIndentation(output, formatting, indentation);
+                }
             }
 
             output.Append(']');
@@ -119,19 +149,45 @@ namespace nl
         {
             output.Append('{');
 
-            int32_t n = 0;
-            for (auto it : Shared<const JsonObject>::Cast(pJson)->GetMembers())
+            const auto& members = Shared<const JsonObject>::Cast(pJson)->GetMembers();
+            if (members.GetCount() != 0)
             {
-                if (n++ > 0)
-                    output.Append(',');
+                if (formatting)
+                {
+                    output.Append('\n');
+                    JsonOutputFormattingIndentation(output, formatting, indentation + 1);
+                }
 
-                output.Append('"');
-                output.Append(it.first.c_str());
-                output.Append('"');
-                output.Append(':');
+                int32_t n = 0;
+                for (auto it : members)
+                {
+                    if (n++ > 0)
+                    {
+                        output.Append(',');
+                        if (formatting)
+                        {
+                            output.Append('\n');
+                            JsonOutputFormattingIndentation(output, formatting, indentation + 1);
+                        }
+                    }
 
-                if (!JsonGenerateProcessBase(output, it.second))
-                    return false;
+                    output.Append('"');
+                    output.Append(it.first.c_str());
+                    output.Append('"');
+                    output.Append(':');
+
+                    if (formatting)
+                        output.Append(' ');
+
+                    if (!JsonGenerateProcessBase(output, it.second, formatting, indentation + 1))
+                        return false;
+                }
+
+                if (formatting)
+                {
+                    output.Append('\n');
+                    JsonOutputFormattingIndentation(output, formatting, indentation);
+                }
             }
 
             output.Append('}');
@@ -146,11 +202,10 @@ namespace nl
         return true;
     }
 
-    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson)
+    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson, JsonFormattingOptions* formatting)
     {
         output.Clear();
-
-        return JsonGenerateProcessBase(output, pJson); // recursive
+        return JsonGenerateProcessBase(output, pJson, formatting, 0); // recursive
     }
 
     Shared<JsonBase> CreateJsonObject(JsonType type)

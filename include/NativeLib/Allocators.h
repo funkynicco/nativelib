@@ -20,15 +20,16 @@ namespace nl
             };
 
             static MemoryDataInfo s_zeroSizeData;
-            static const void* const s_zeroSizeDataPointer;
+            static void* s_zeroSizeDataPointer;
 
         public:
             ~Memory();
 
-            Memory(const Memory& memory) noexcept;
             Memory(Memory&& memory) noexcept;
-            Memory& operator =(const Memory& memory) noexcept;
             Memory& operator =(Memory&& memory) noexcept;
+
+            Memory(const Memory& memory) = delete;
+            Memory& operator =(const Memory& memory) = delete;
 
             static Memory Allocate(size_t size);
 
@@ -75,7 +76,7 @@ namespace nl
 
             // unsupported constructors & assignments
             GenericMemory(const GenericMemory&) = delete;
-            GenericMemory& operator =(const GenericMemory&) noexcept = delete;
+            GenericMemory& operator =(const GenericMemory&) = delete;
 
             T* Get() { return m_memory.Get<T>(); }
             const T* Get() const { return m_memory.Get<T>(); }

@@ -30,5 +30,5 @@ namespace nl
 #if _DEBUG
 #define nl_assert_if_debug(__expr) nl_assert(__expr)
 #else
-#define nl_assert_if_debug(__expr) __expr
+#define nl_assert_if_debug(__expr) ((void)(__expr))
 #endif

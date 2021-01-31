@@ -14,6 +14,39 @@ void AssertHandler(const nl::assert::Assert& assert)
     MessageBoxA(nullptr, message, "Assert failed", MB_OK | MB_ICONERROR);
 }
 
+
+
+void* MyAllocHeap(size_t size)
+{
+    void* ptr = malloc(size + sizeof(size_t));
+    *(size_t*)ptr = size;
+
+    ptr = (char*)ptr + sizeof(size_t);
+
+    //////////////////////////////////////////////////////////////////////////
+    char buf[1024];
+    sprintf_s(buf, "MyAllocHeap(%I64u) ==> %p\n", size, ptr);
+    OutputDebugStringA(buf);
+    //////////////////////////////////////////////////////////////////////////
+
+    return ptr;
+}
+
+void MyFreeHeap(void* ptr)
+{
+    ptr = (char*)ptr - sizeof(size_t);
+    auto size = *(size_t*)ptr;
+
+    //////////////////////////////////////////////////////////////////////////
+    char buf[1024];
+    sprintf_s(buf, "MyFreeHeap ==> %p (%I64u bytes)\n", (char*)ptr + sizeof(size_t), size);
+    OutputDebugStringA(buf);
+    //////////////////////////////////////////////////////////////////////////
+
+    memset(ptr, 0xcd, size);
+    free(ptr);
+}
+
 bool SetupNativeLibSystemLayer()
 {
     nl::systemlayer::SystemLayerFunctions functions = {};
@@ -21,57 +54,47 @@ bool SetupNativeLibSystemLayer()
         return false;
     
     functions.AssertHandler = AssertHandler;
+    functions.AllocateHeapMemory = MyAllocHeap;
+    functions.FreeHeapMemory = MyFreeHeap;
     
     nl::systemlayer::SetSystemLayerFunctions(&functions);
     return true;
 }
 
+void Test()
+    {
+    auto ccg = nl::memory::Memory::Allocate(1435);
+    auto a = nl::memory::Memory::Allocate(1435);
+
+    {
+        auto x = nl::memory::Memory(std::move(ccg));
+    }
+
+    auto b = nl::memory::Memory(std::move(a));
+    auto c = nl::memory::Memory(std::move(b));
+    auto d = nl::memory::Memory(std::move(c));
+    auto e = nl::memory::Memory(std::move(d));
+    auto f = nl::memory::Memory(std::move(e));
+    auto g = nl::memory::Memory(std::move(f));
+    auto h = nl::memory::Memory(std::move(g));
+    auto i = nl::memory::Memory(std::move(h));
+    auto j = nl::memory::Memory(std::move(i));
+    auto k = nl::memory::Memory(std::move(j));
+    auto l = nl::memory::Memory(std::move(k));
+    auto m = nl::memory::Memory(std::move(l));
+}
+
 int main(int, char**)
-{
+    {
     if (!SetupNativeLibSystemLayer())
     {
         std::cout << "Setup NativeLib system layer failed!" << std::endl;
         return 1;
     }
 
-    nl::parsing::Scanner scanner(R"(
-
+    for (int i = 0; i < 1; i++)
     {
-        "glossary": {
-            "title": "example glossary",
-		    "GlossDiv": {
-                "title": "S",
-			    "GlossList": {
-                    "GlossEntry": {
-                        "ID": "SGML",
-					    "SortAs": "SGML",
-					    "GlossTerm": "Standard Generalized Markup Language",
-					    "Acronym": "SGML",
-					    "Abbrev": "ISO 8879:1986",
-					    "GlossDef": {
-                            "para": "A meta-markup language, used to create markup languages such as DocBook.",
-						    "GlossSeeAlso": ["GML", "XML"]
-                        },
-					    "GlossSee": "markup"
-                    }
-                }
-            }
-        }
-    }
-
-    )");
-
-    //auto xx = scanner.Peek();
-
-    nl::Vector<nl::parsing::Token> tokens;
-    while (auto token = scanner.Next())
-    {
-        tokens.Add(std::move(token));
-    }
-
-    for (const auto& token : tokens)
-    {
-        std::cout << std::setw(11) << std::left << nl::parsing::TokenTypeToString(token) << " " << token << " (Line: " << token.GetLine() << ")" << std::endl;
+        Test();
     }
 
     return 0;

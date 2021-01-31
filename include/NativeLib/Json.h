@@ -51,6 +51,11 @@ namespace nl
         }
     };
 
+    struct JsonFormattingOptions
+    {
+        nl::String Indentation = "    ";
+    };
+
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +399,7 @@ namespace nl
         return Shared<T>::Cast(ptr);
     }
 
-    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson);
+    bool GenerateJsonString(nl::String& output, Shared<const JsonBase> pJson, JsonFormattingOptions* formatting = nullptr);
     Shared<JsonBase> CreateJsonObject(JsonType type);
 
     template <typename T>
