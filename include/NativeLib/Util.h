@@ -27,11 +27,13 @@ namespace nl::util
     }
 
     template <typename T>
-    constexpr T Pow(T value, T power)
+    constexpr T Pow(T value, size_t power)
     {
-        for (T i = 0; i < power; ++i)
+        T result = 1;
+
+        for (size_t i = 0; i < power; ++i)
         {
-            value *= value;
+            result *= value;
         }
 
         return value;
