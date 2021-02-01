@@ -9,7 +9,7 @@
 namespace nl
 {
 	String::String() :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -23,7 +23,7 @@ namespace nl
 	}
 
 	String::String(const char* str) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -32,7 +32,7 @@ namespace nl
 	}
 
 	String::String(const void* str, size_t len) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -40,18 +40,18 @@ namespace nl
 	}
 
 	String::String(size_t len, char ch) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
-		EnsureCapacity(len + 1);
+		EnsureCapacity(len);
 		memset(m_pString, ch, len);
 		m_nLength = len;
 		m_pString[len] = 0;
 	}
 
 	String::String(std::string_view str) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -59,7 +59,7 @@ namespace nl
 	}
 
 	String::String(const String& str) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -67,7 +67,7 @@ namespace nl
 	}
 
 	String::String(String&& str) :
-		m_nCapacity(sizeof(m_stack)),
+		m_nCapacity(sizeof(m_stack) - 1),
 		m_nLength(0),
 		m_pString(m_stack)
 	{
@@ -98,7 +98,7 @@ namespace nl
 
 	String& String::operator =(String&& str)
 	{
-		if (str.m_nLength + 1 > StackSize&&
+		if (str.m_nLength + 1 > StackSize &&
 			str.m_pString != str.m_stack)
 		{
 			if (m_pString != m_stack)
@@ -211,14 +211,14 @@ namespace nl
 
 	void String::SetLength(size_t length)
 	{
-		EnsureCapacity(length + 1);
+		EnsureCapacity(length);
 		m_nLength = length;
 		m_pString[length] = 0;
 	}
 
 	void String::Append(const void* str, size_t len)
 	{
-		EnsureCapacity(m_nLength + len + 1);
+		EnsureCapacity(m_nLength + len);
 		memcpy(m_pString + m_nLength, str, len);
 		m_nLength += len;
 		m_pString[m_nLength] = 0;
@@ -271,7 +271,7 @@ namespace nl
 
 	void String::Insert(size_t index, const void* str, size_t len)
 	{
-		EnsureCapacity(m_nLength + len + 1);
+		EnsureCapacity(m_nLength + len);
 		memmove(m_pString + index + len, m_pString + index, m_nLength - index);
 		memcpy(m_pString + index, str, len);
 		m_nLength += len;
@@ -379,7 +379,7 @@ namespace nl
 		if (m_nLength >= count)
 			return;
 
-		EnsureCapacity(count + 1);
+		EnsureCapacity(count);
 
 		memmove(m_pString + count - m_nLength, m_pString, m_nLength);
 		memset(m_pString, ch, count - m_nLength);
@@ -392,7 +392,7 @@ namespace nl
 		if (m_nLength >= count)
 			return;
 
-		EnsureCapacity(count + 1);
+		EnsureCapacity(count);
 
 		memset(m_pString + m_nLength, ch, count - m_nLength);
 		m_nLength = count;
@@ -449,20 +449,20 @@ namespace nl
 
 		if (m_pString == m_stack)
 		{
-			m_pString = reinterpret_cast<char*>(nl::memory::Allocate(m_nCapacity));
+			m_pString = reinterpret_cast<char*>(nl::memory::Allocate(m_nCapacity + 1));
 			nl_assert(m_pString != NULL);
 			memcpy(m_pString, m_stack, GetLength() + 1);
 		}
 		else
 		{
-			m_pString = reinterpret_cast<char*>(nl::memory::Reallocate(m_pString, m_nCapacity));
+			m_pString = reinterpret_cast<char*>(nl::memory::Reallocate(m_pString, m_nCapacity + 1));
 			nl_assert(m_pString != NULL);
 		}
 	}
 
 	void String::Set(const void* str, size_t len)
 	{
-		EnsureCapacity(len + 1);
+		EnsureCapacity(len);
 
 		memcpy(m_pString, str, len);
 		m_pString[len] = 0;
