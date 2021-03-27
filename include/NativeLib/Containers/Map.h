@@ -85,6 +85,6 @@ namespace nl
             ptr = ptr->next;
         }
 
-        return NULL;
+        return nullptr;
     }
 */
