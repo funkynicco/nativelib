@@ -32,6 +32,7 @@ DeclareGenericException(BadAllocationException, "Bad allocation");
 DeclareGenericException(NotImplementedException, "Not implemented");
 DeclarePassthroughException(ArgumentException);
 DeclarePassthroughException(InvalidOperationException);
+DeclarePassthroughException(NotSupportedException);
 
 #ifdef NL_PLATFORM_WINDOWS
 class Win32Exception : public Exception

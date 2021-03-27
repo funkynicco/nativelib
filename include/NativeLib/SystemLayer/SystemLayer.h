@@ -29,10 +29,12 @@ namespace nl::systemlayer
         typedef int64_t TFileGetPosition(FileHandle fp); // get pos
         typedef int64_t TFileGetSize(FileHandle fp); // get size
         typedef bool TFileSeek(FileHandle fp, int64_t offset, nl::io::SeekMode mode); // seek
-        typedef size_t TFileRead(FileHandle fp, void* ptr, size_t count); // read
-        typedef size_t TFileWrite(FileHandle fp, const void* ptr, size_t count); // write
+        typedef int64_t TFileRead(FileHandle fp, void* ptr, int64_t numberOfBytesToRead); // read
+        typedef int64_t TFileWrite(FileHandle fp, const void* ptr, int64_t numberOfBytesToWrite); // write
         typedef bool TFileFlush(FileHandle fp); // flush
         typedef bool TFileSetEndOfFile(FileHandle fp); // set end of file
+
+        // sockets api (WIP)
     }
 
     struct SystemLayerFunctions
