@@ -1,3 +1,5 @@
+IS_NATIVELIB_SOLUTION = true
+
 workspace "nativelib"
     targetdir       "build/%{cfg.action}/bin/%{cfg.longname}"
     objdir          "build/%{cfg.action}/obj/%{prj.name}/%{cfg.longname}"

@@ -28,6 +28,8 @@ project "nativelib"
         "include",
     }
 
-    postbuildcommands {
-        "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
-    }
+    if IS_NATIVELIB_SOLUTION then
+        postbuildcommands {
+            "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
+        }
+    end
