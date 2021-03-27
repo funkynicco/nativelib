@@ -38,4 +38,17 @@ namespace nl::util
 
         return result;
     }
+
+    // Generates a value that is equivalent or above the given value in the form of squared (2, 4, 8, 16, 32, 64, ...).
+    template <typename T>
+    constexpr T GetClosestSquared(T value)
+    {
+        T result = 1;
+        while (result < value)
+        {
+            result <<= 1;
+        }
+
+        return result;
+    }
 }
