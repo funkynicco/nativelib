@@ -1,15 +1,6 @@
 workspace "nativelib"
-    language        "C++"
-    kind            "StaticLib"
     targetdir       "build/%{cfg.action}/bin/%{cfg.longname}"
     objdir          "build/%{cfg.action}/obj/%{prj.name}/%{cfg.longname}"
-    --characterset    "MBCS"
-    cppdialect      "c++17"
-    systemversion   "10.0.18362.0"
-
-    defines {
-        "_LIB"
-    }
 
     platforms {
         "Win32",

@@ -1,24 +1,33 @@
 project "nativelib"
+    language        "C++"
+    kind            "StaticLib"
+    --characterset    "MBCS"
+    cppdialect      "c++17"
+    systemversion   "10.0.18362.0"
 
-pchheader "StdAfx.h"
-pchsource "src/StdAfx.cpp"
+    defines {
+        "_LIB"
+    }
 
-files {
-    "src/**.cpp",
-    "src/**.h",
-    "src/**.inl",
-    "include/NativeLib/**.h",
-    "include/NativeLib/**.inl",
-    "*.py",
-    "*.natvis",
-    "*.lua"
-}
+    pchheader "StdAfx.h"
+    pchsource "src/StdAfx.cpp"
 
-includedirs {
-    "src",
-    "include",
-}
+    files {
+        "src/**.cpp",
+        "src/**.h",
+        "src/**.inl",
+        "include/NativeLib/**.h",
+        "include/NativeLib/**.inl",
+        "*.py",
+        "*.natvis",
+        "*.lua"
+    }
 
-postbuildcommands {
-    "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
-}
+    includedirs {
+        "src",
+        "include",
+    }
+
+    postbuildcommands {
+        "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
+    }
