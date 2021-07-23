@@ -84,7 +84,11 @@ namespace nl
 
         Shared(const Shared& other)
         {
+            if (other.m_shared)
+            {
             nl::threading::Interlocked::Increment(&other.m_shared->References);
+            }
+
             m_shared = other.m_shared;
             m_externalShared = other.m_externalShared;
         }
@@ -104,7 +108,11 @@ namespace nl
             std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
         Shared(const Shared<TOther>& other)
         {
+            if (other.m_shared)
+            {
             nl::threading::Interlocked::Increment(&other.m_shared->References);
+            }
+
             m_shared = (SharedObjectType*)other.m_shared;
             m_externalShared = other.m_externalShared;
         }
@@ -124,7 +132,11 @@ namespace nl
 
         Shared& operator =(const Shared& other)
         {
+            if (other.m_shared)
+            {
             nl::threading::Interlocked::Increment(&other.m_shared->References);
+            }
+
             Release();
             m_shared = (SharedObjectType*)other.m_shared;
             m_externalShared = other.m_externalShared;
@@ -147,11 +159,20 @@ namespace nl
             std::enable_if_t<std::is_base_of_v<TObject, TOther>, int>* = nullptr>
         Shared& operator =(const Shared<TOther>& other)
         {
+            if (other.m_shared)
+            {
             nl::threading::Interlocked::Increment(&other.m_shared->References);
+            }
+
             Release();
             m_shared = (SharedObjectType*)other.m_shared;
             m_externalShared = other.m_externalShared;
             return *this;
+        }
+
+        bool has_value() const
+        {
+            return m_shared != nullptr;
         }
 
         TObject* get()
@@ -223,7 +244,11 @@ namespace nl
             std::enable_if_t<std::is_base_of_v<TBase, TObject>, int> * = nullptr>
             static Shared<TObject> Cast(const Shared<TBase>& base)
         {
+            if (base.m_shared)
+            {
             nl::threading::Interlocked::Increment(&base.m_shared->References);
+            }
+
             return Shared<TObject>((SharedObjectType*)base.m_shared, base.m_externalShared);
         }
 
