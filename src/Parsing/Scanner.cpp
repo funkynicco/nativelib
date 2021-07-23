@@ -3,7 +3,7 @@
 #include <NativeLib/Parsing/Scanner.h>
 
 #include <NativeLib/Assert.h>
-#include <NativeLib/IO/File.h>
+#include <NativeLib/IO/FileStream.h>
 
 // TODO: this parser does not yet support \n \t \" etc in string tokens due to using string_view
 
@@ -568,11 +568,11 @@ namespace nl
 
         Scanner Scanner::FromFile(std::string_view filename)
         {
-            auto file = nl::io::File::Open(filename, nl::io::CreateMode::OpenExisting, false);
+            auto file = nl::io::FileStream::Open(filename, nl::io::CreateMode::OpenExisting, false);
             if (!file)
                 throw OpenFileFailedException();
 
-            size_t fileSize = (size_t)file.GetSize();
+            size_t fileSize = (size_t)file.GetLength();
 
             auto data = nl::String(fileSize, 0);
             if (file.Read(data.data(), fileSize) != fileSize)

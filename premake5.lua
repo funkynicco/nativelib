@@ -1,15 +1,8 @@
+IS_NATIVELIB_SOLUTION = true
+
 workspace "nativelib"
-    language        "C++"
-    kind            "StaticLib"
     targetdir       "build/%{cfg.action}/bin/%{cfg.longname}"
     objdir          "build/%{cfg.action}/obj/%{prj.name}/%{cfg.longname}"
-    --characterset    "MBCS"
-    cppdialect      "c++17"
-    systemversion   "10.0.18362.0"
-
-    defines {
-        "_LIB"
-    }
 
     platforms {
         "Win32",
@@ -63,29 +56,6 @@ workspace "nativelib"
     
     filter {}
 
-    project "nativelib"
-
-        pchheader "StdAfx.h"
-        pchsource "src/StdAfx.cpp"
-
-        files {
-            "src/**.cpp",
-            "src/**.h",
-            "src/**.inl",
-            "include/NativeLib/**.h",
-            "include/NativeLib/**.inl",
-            "*.py",
-            "*.natvis",
-            "*.lua"
-        }
-
-        includedirs {
-            "src",
-            "include",
-        }
-
-        postbuildcommands {
-            "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
-        }
+    include "premake5.project.lua"
     
     require "test"

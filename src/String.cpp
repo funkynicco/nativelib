@@ -450,13 +450,13 @@ namespace nl
 		if (m_pString == m_stack)
 		{
 			m_pString = reinterpret_cast<char*>(nl::memory::Allocate(m_nCapacity + 1));
-			nl_assert(m_pString != NULL);
+			nl_assert(m_pString != nullptr);
 			memcpy(m_pString, m_stack, GetLength() + 1);
 		}
 		else
 		{
 			m_pString = reinterpret_cast<char*>(nl::memory::Reallocate(m_pString, m_nCapacity + 1));
-			nl_assert(m_pString != NULL);
+			nl_assert(m_pString != nullptr);
 		}
 	}
 
@@ -518,10 +518,10 @@ namespace nl
 #ifdef NL_PLATFORM_WINDOWS
 	String String::FromHResult(int32_t hr, va_list* l)
 	{
-		LPSTR pstr = NULL;
+		LPSTR pstr = nullptr;
 		DWORD dwSize = FormatMessageA(
 			FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-			NULL,
+			nullptr,
 			hr,
 			LANG_NEUTRAL,
 			(LPSTR)&pstr,

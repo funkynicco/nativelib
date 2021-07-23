@@ -241,7 +241,7 @@ namespace nl
 		}
 
 #ifdef NL_PLATFORM_WINDOWS
-		static String FromHResult(int32_t hr, va_list* l = NULL);
+		static String FromHResult(int32_t hr, va_list* l = nullptr);
 #endif
 
 	private:

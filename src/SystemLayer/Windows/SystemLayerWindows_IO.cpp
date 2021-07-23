@@ -93,15 +93,15 @@ namespace nl::systemlayer::defaults
         return true;
     }
 
-    static size_t Read(FileHandle fp, void* ptr, size_t count)
+    static int64_t Read(FileHandle fp, void* ptr, int64_t count)
     {
         HANDLE hFile = (HANDLE)fp;
         
-        size_t remaining = count;
+        int64_t remaining = count;
         while (remaining != 0)
         {
             DWORD dw;
-            if (!ReadFile(hFile, ptr, remaining, &dw, nullptr) ||
+            if (!ReadFile(hFile, ptr, (DWORD)remaining, &dw, nullptr) ||
                 dw == 0)
                 break;
 
@@ -112,15 +112,15 @@ namespace nl::systemlayer::defaults
         return count - remaining;
     }
 
-    static size_t Write(FileHandle fp, const void* ptr, size_t count)
+    static int64_t Write(FileHandle fp, const void* ptr, int64_t count)
     {
         HANDLE hFile = (HANDLE)fp;
         
-        size_t remaining = count;
+        int64_t remaining = count;
         while (remaining != 0)
         {
             DWORD dw;
-            if (!WriteFile(hFile, ptr, remaining, &dw, nullptr) ||
+            if (!WriteFile(hFile, ptr, (DWORD)remaining, &dw, nullptr) ||
                 dw == 0)
                 break;
 
