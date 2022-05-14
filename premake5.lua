@@ -1,8 +1,8 @@
 IS_NATIVELIB_SOLUTION = true
 
 workspace "nativelib"
-    targetdir       "build/%{cfg.action}/bin/%{cfg.longname}"
-    objdir          "build/%{cfg.action}/obj/%{prj.name}/%{cfg.longname}"
+    targetdir   "build/%{cfg.action}/bin/%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}"
+    objdir      "!build/%{cfg.action}/obj/%{prj.name}/%{cfg.platform}/%{cfg.buildcfg}"
 
     platforms {
         "Win32",

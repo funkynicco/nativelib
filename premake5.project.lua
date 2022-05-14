@@ -3,7 +3,7 @@ project "nativelib"
     kind            "StaticLib"
     --characterset    "MBCS"
     cppdialect      "c++17"
-    systemversion   "10.0.18362.0"
+    systemversion   "10.0.19041.0"
 
     defines {
         "_LIB"
