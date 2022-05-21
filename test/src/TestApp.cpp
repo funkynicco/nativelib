@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 
 #include <NativeLib/SystemLayer/SystemLayer.h>
+#include <NativeLib/Json.h>
 
 #pragma comment(lib, "DbgHelp.lib")
 
@@ -52,17 +53,17 @@ bool SetupNativeLibSystemLayer()
     nl::systemlayer::SystemLayerFunctions functions = {};
     if (!nl::systemlayer::GetDefaultSystemLayerFunctions(&functions))
         return false;
-    
+
     functions.AssertHandler = AssertHandler;
     functions.AllocateHeapMemory = MyAllocHeap;
     functions.FreeHeapMemory = MyFreeHeap;
-    
+
     nl::systemlayer::SetSystemLayerFunctions(&functions);
     return true;
 }
 
 void Test()
-    {
+{
     auto ccg = nl::memory::Memory::Allocate(1435);
     auto a = nl::memory::Memory::Allocate(1435);
 
@@ -85,17 +86,24 @@ void Test()
 }
 
 int main(int, char**)
-    {
+{
     if (!SetupNativeLibSystemLayer())
     {
         std::cout << "Setup NativeLib system layer failed!" << std::endl;
         return 1;
     }
 
-    for (int i = 0; i < 1; i++)
+    nl::Vector<nl::String> parse_errors;
+    auto obj = nl::ParseJson<nl::JsonObject>(R"(
+        
     {
-        Test();
+        "x": 123,
+        "y": "testing"
     }
+
+    )", parse_errors);
+
+    auto xy = obj->GetMember<const nl::JsonNumber>("jf");
 
     return 0;
 }

@@ -126,7 +126,7 @@ namespace nl
         Shared<T> GetMember(const char* name)
         {
             auto pMember = GetMember(name);
-            if (!pMember)
+            if (!pMember.has_value())
                 return nullptr;
 
             if (!T::IsOfType(pMember->GetType()))

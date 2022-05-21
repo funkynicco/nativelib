@@ -80,6 +80,11 @@ namespace nl
 
         Scoped& operator =(const Scoped&) = delete;
 
+        bool has_value() const
+        {
+            return m_obj != nullptr;
+        }
+
         TObject* get()
         {
             nl_assert_if_debug(m_obj != nullptr);

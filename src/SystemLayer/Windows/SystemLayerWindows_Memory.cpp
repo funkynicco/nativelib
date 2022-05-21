@@ -33,7 +33,7 @@ namespace nl::systemlayer::defaults
             return AllocateHeapMemory(new_size);
 
 #ifdef _DEBUG
-        SIZE_T old_size = HeapSize(GetProcessHeap(), 0, ptr);
+        SIZE_T old_size = HeapSize(GetProcessHeap(), 0, reinterpret_cast<void*>(reinterpret_cast<ULONG_PTR>(ptr) / 4096 * 4096));
 #endif
 
         uint8_t* new_ptr = (uint8_t*)HeapReAlloc(GetProcessHeap(), 0, ptr, (SIZE_T)new_size);
