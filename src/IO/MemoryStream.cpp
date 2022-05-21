@@ -92,6 +92,27 @@ namespace nl
             return numberOfBytesToWrite;
         }
 
+        void MemoryStream::Remove(int64_t offset, int64_t length)
+        {
+            if (offset + length > m_length)
+                throw ArgumentException("The argument attempts to remove data outside the valid range of this MemoryStream.");
+
+            memmove(m_memory.Get<char>() + offset, m_memory.Get<char>() + offset + length, m_length - (offset + length));
+            m_length -= length;
+            if (m_position > m_length)
+                m_position = m_length;
+        }
+
+        void MemoryStream::Insert(int64_t offset, int64_t length)
+        {
+            AdjustSize(m_length + length);
+
+            memmove(m_memory.Get<char>() + offset + length, m_memory.Get<char>() + offset, m_length - (offset + length));
+            m_length += length;
+            if (m_position > offset)
+                m_position += length;
+        }
+
         void MemoryStream::AdjustSize(int64_t new_minimum_size /* ,bool shrink */)
         {
             if ((int64_t)m_memory.GetSize() > new_minimum_size)

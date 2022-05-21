@@ -2,6 +2,8 @@
 
 #include <NativeLib/String.h>
 
+//!ALLOW_INCLUDE "Windows.h"
+
 #ifdef NL_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif

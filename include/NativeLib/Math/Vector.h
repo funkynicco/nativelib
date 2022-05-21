@@ -172,4 +172,4 @@ namespace nl
     }
 }
 
-#include "Vector.inl"
+#include <NativeLib/Math/Vector.inl>

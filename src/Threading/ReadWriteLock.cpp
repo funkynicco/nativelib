@@ -3,6 +3,8 @@
 #include <NativeLib/Threading/ReadWriteLock.h>
 #include <NativeLib/Allocators.h>
 
+//!ALLOW_INCLUDE "Windows.h"
+
 #ifdef NL_PLATFORM_WINDOWS
 #include <Windows.h>
 #endif

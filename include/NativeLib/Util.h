@@ -1,5 +1,7 @@
 #pragma once
 
+#include <NativeLib/String.h>
+
 namespace nl::util
 {
     template <typename T>
@@ -50,5 +52,52 @@ namespace nl::util
         }
 
         return result;
+    }
+
+    inline nl::String GetSize(size_t size)
+    {
+        double v = (double)size;
+        int n = 0;
+        while (v >= 1024.0)
+        {
+            v /= 1024.0;
+            ++n;
+        }
+
+        char buf[128];
+        int len = 0;
+
+        switch (n)
+        {
+        case 0:
+            len = sprintf(buf, "%llu B", size);
+            break;
+        case 1:
+            len = sprintf(buf, "%.2f KB", v);
+            break;
+        case 2:
+            len = sprintf(buf, "%.2f MB", v);
+            break;
+        case 3:
+            len = sprintf(buf, "%.2f GB", v);
+            break;
+        case 4:
+            len = sprintf(buf, "%.2f TB", v);
+            break;
+        case 5:
+            len = sprintf(buf, "%.2f PB", v);
+            break;
+        case 6:
+            len = sprintf(buf, "%.2f EB", v);
+            break;
+        case 7:
+            len = sprintf(buf, "%.2f ZB", v);
+            break;
+        case 8:
+            len = sprintf(buf, "%.2f YB", v);
+            break;
+        }
+
+        return nl::String(buf, len);
     }
 }

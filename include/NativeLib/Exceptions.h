@@ -59,3 +59,14 @@ public:
 private:
     uint32_t m_dwErrorCode;
 };
+
+class SocketException : public Exception
+{
+public:
+    SocketException(const char* message, uint32_t code = 0);
+
+    uint32_t GetCode() const;
+
+private:
+    uint32_t m_code;
+};

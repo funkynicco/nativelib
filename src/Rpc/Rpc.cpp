@@ -5,6 +5,10 @@
 #include <NativeLib/Rpc.h>
 #include <NativeLib/Logger.h>
 
+//!ALLOW_INCLUDE "DataBuffer.h"
+//!ALLOW_INCLUDE "RpcInternal.h"
+//!ALLOW_INCLUDE "Windows.h"
+
 #include "DataBuffer.h"
 #include "RpcInternal.h"
 

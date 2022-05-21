@@ -4,6 +4,7 @@
 
 #include <NativeLib/SystemLayer/SystemLayer.h>
 
+//!ALLOW_INCLUDE "SystemLayerWindows.h"
 #include "SystemLayerWindows.h"
 
 #include <NativeLib/Assert.h>

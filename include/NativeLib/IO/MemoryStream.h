@@ -12,17 +12,20 @@ namespace nl
         public:
             MemoryStream(int64_t initial_capacity = 1024);
 
-            virtual bool CanSeek() const;
-            virtual bool CanRead() const;
-            virtual bool CanWrite() const;
+            virtual bool CanSeek() const override;
+            virtual bool CanRead() const override;
+            virtual bool CanWrite() const override;
 
-            virtual int64_t GetPosition() const;
-            virtual int64_t GetLength() const;
-            virtual int64_t Seek(int64_t offset, SeekMode mode = SeekMode::Begin);
-            virtual void SetLength(int64_t length);
+            virtual int64_t GetPosition() const override;
+            virtual int64_t GetLength() const override;
+            virtual int64_t Seek(int64_t offset, SeekMode mode = SeekMode::Begin) override;
+            virtual void SetLength(int64_t length) override;
 
-            virtual int64_t Read(void* lp, int64_t numberOfBytesToRead);
-            virtual int64_t Write(const void* lp, int64_t numberOfBytesToWrite);
+            virtual int64_t Read(void* lp, int64_t numberOfBytesToRead) override;
+            virtual int64_t Write(const void* lp, int64_t numberOfBytesToWrite) override;
+
+            virtual void Remove(int64_t offset, int64_t length);
+            virtual void Insert(int64_t offset, int64_t length);
 
             nl::memory::Memory& GetMemory()
             {

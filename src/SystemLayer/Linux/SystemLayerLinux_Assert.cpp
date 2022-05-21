@@ -4,6 +4,7 @@
 
 #include <NativeLib/SystemLayer/SystemLayer.h>
 
+//!ALLOW_INCLUDE "SystemLayerLinux.h"
 #include "SystemLayerLinux.h"
 
 #include <NativeLib/Assert.h>

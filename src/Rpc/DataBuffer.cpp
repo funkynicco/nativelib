@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "DataBuffer.h"
 
+//!ALLOW_INCLUDE "DataBuffer.h"
+
 #include <NativeLib/SystemLayer/SystemLayer.h>
 
 namespace nl

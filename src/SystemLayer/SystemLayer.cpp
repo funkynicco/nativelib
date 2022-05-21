@@ -2,6 +2,9 @@
 
 #include <NativeLib/SystemLayer/SystemLayer.h>
 
+//!ALLOW_INCLUDE "SystemLayer/Windows/SystemLayerWindows.h"
+//!ALLOW_INCLUDE "SystemLayer/Linux/SystemLayerLinux.h"
+
 #if defined(NL_PLATFORM_WINDOWS)
 #include "SystemLayer/Windows/SystemLayerWindows.h"
 #elif defined(NL_PLATFORM_LINUX)

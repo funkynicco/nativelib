@@ -4,11 +4,13 @@
 
 #include <NativeLib/SystemLayer/SystemLayer.h>
 
+//!ALLOW_INCLUDE "SystemLayerWindows.h"
 #include "SystemLayerWindows.h"
 
 #include <NativeLib/Exceptions.h>
 #include <NativeLib/Assert.h>
 
+//!ALLOW_INCLUDE "Windows.h"
 #include <Windows.h>
 
 namespace nl::systemlayer::defaults

@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 
+//!ALLOW_INCLUDE "Windows.h"
+//!ALLOW_INCLUDE "DbgHelp.h"
+
 #ifdef NL_PLATFORM_WINDOWS
 
 #include <NativeLib/Trace/AllocationTrace.h>

@@ -6,6 +6,7 @@
 
 #include <NativeLib/Json.h>
 
+//!ALLOW_INCLUDE "JsonInline.inl"
 #include "JsonInline.inl"
 
 #include <NativeLib/Allocators.h>

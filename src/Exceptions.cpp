@@ -3,6 +3,9 @@
 #include <NativeLib/Exceptions.h>
 #include <NativeLib/String.h>
 
+//!ALLOW_INCLUDE "Windows.h"
+//!ALLOW_INCLUDE "DbgHelp.h"
+
 #ifdef NL_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <DbgHelp.h>
@@ -116,3 +119,14 @@ IOException::IOException(const char* msg) :
 #endif
 }
 #endif
+
+SocketException::SocketException(const char* message, uint32_t code) :
+    Exception(message)
+{
+    m_code = code;
+}
+
+uint32_t SocketException::GetCode() const
+{
+    return m_code;
+}

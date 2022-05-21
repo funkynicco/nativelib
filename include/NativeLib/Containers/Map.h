@@ -43,7 +43,7 @@ namespace nl
 }
 
 #define NL_ALLOW_MAP_INL_INCLUDE_CONTEXT
-#include "Map.inl"
+#include <NativeLib/Containers/Map.inl>
 #undef NL_ALLOW_MAP_INL_INCLUDE_CONTEXT
 
 /*
