@@ -37,8 +37,9 @@ NL_PLATFORM_CHECK_TYPESIZE(unsigned short, 2);
 NL_PLATFORM_CHECK_TYPESIZE(int, 4);
 NL_PLATFORM_CHECK_TYPESIZE(unsigned int, 4);
 
-NL_PLATFORM_CHECK_TYPESIZE(long, 4);
-NL_PLATFORM_CHECK_TYPESIZE(unsigned long, 4);
+// long is 4 on windows and 8 on linux ; don't use long
+//NL_PLATFORM_CHECK_TYPESIZE(long, 4);
+//NL_PLATFORM_CHECK_TYPESIZE(unsigned long, 4);
 
 NL_PLATFORM_CHECK_TYPESIZE(long long, 8);
 NL_PLATFORM_CHECK_TYPESIZE(unsigned long long, 8);
