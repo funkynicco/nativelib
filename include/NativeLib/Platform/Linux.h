@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 //#ifdef __EMSCRIPTEN__
 //#endif
@@ -42,4 +43,28 @@ template <size_t _Size>
 inline errno_t strcpy_s(char(&dst)[_Size], const char* src)
 {
     return strcpy_s(dst, _Size, src);
+}
+
+inline char* strlwr(char* s)
+{
+    char* p = s;
+    while (*p)
+    {
+        *p = tolower((unsigned char)*p);
+        p++;
+    }
+
+    return s;
+}
+
+inline char* strupr(char* s)
+{
+    char* p = s;
+    while (*p)
+    {
+        *p = toupper((unsigned char)*p);
+        p++;
+    }
+
+    return s;
 }

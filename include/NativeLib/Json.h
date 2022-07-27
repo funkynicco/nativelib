@@ -1,5 +1,5 @@
 /*
- * JSON Library by Nicco © 2019
+ * JSON Library by Nicco ï¿½ 2019
  */
 
 #pragma once

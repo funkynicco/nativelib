@@ -27,7 +27,7 @@ namespace nl
     } \
     __analysis_assume(__expr)
 
-#if _DEBUG
+#ifdef _DEBUG
 #define nl_assert_if_debug(__expr) nl_assert(__expr)
 #else
 #define nl_assert_if_debug(__expr) ((void)(__expr))

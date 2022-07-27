@@ -36,12 +36,12 @@ namespace nl::systemlayer::defaults
         throw NotImplementedException();
     }
 
-    static size_t Read(FileHandle fp, void* ptr, size_t count)
+    static int64_t Read(FileHandle fp, void* ptr, int64_t count)
     {
         throw NotImplementedException();
     }
 
-    static size_t Write(FileHandle fp, const void* ptr, size_t count)
+    static int64_t Write(FileHandle fp, const void* ptr, int64_t count)
     {
         throw NotImplementedException();
     }

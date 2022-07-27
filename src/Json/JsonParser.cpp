@@ -102,9 +102,17 @@ namespace nl
 
             auto num = Shared<const JsonNumber>::Cast(pJson);
             if (num->IsDouble())
+            {
                 sprintf_s(buffer, "%lf", num->GetDouble());
+            }
             else
+            {
+#ifdef NL_PLATFORM_WINDOWS
                 sprintf_s(buffer, "%lld", num->GetValue());
+#else
+                sprintf_s(buffer, "%ld", num->GetValue());
+#endif
+            }
 
             output.Append(buffer);
         }

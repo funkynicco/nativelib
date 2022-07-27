@@ -556,7 +556,12 @@ namespace nl
                 }
 
                 char num[128];
+
+#ifdef NL_PLATFORM_WINDOWS
                 int32_t chars = sprintf_s(num, "%llu", value);
+#else
+                int32_t chars = sprintf_s(num, "%lu", value);
+#endif
 
                 tokenType = TokenType::Number;
                 result.Set(num, chars);

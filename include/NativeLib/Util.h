@@ -70,7 +70,11 @@ namespace nl::util
         switch (n)
         {
         case 0:
+#ifdef NL_PLATFORM_WINDOWS
             len = sprintf(buf, "%llu B", size);
+#else
+            len = sprintf(buf, "%lu B", size);
+#endif
             break;
         case 1:
             len = sprintf(buf, "%.2f KB", v);

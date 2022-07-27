@@ -53,7 +53,7 @@ namespace nl
         {
         }
 
-        Shared(nullptr_t) :
+        Shared(std::nullptr_t) :
             m_shared(nullptr),
             m_externalShared(false)
         {

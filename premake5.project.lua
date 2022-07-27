@@ -9,7 +9,11 @@ project "nativelib"
         "_LIB"
     }
 
-    pchheader "StdAfx.h"
+    filter "system:windows"
+        pchheader "StdAfx.h"
+    
+    filter {}
+
     pchsource "src/StdAfx.cpp"
 
     files {
@@ -29,7 +33,11 @@ project "nativelib"
     }
 
     if IS_NATIVELIB_SOLUTION then
-        postbuildcommands {
-            "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
-        }
+        filter "system:windows"
+
+            postbuildcommands {
+                "py publish.py %{cfg.platform} %{cfg.buildcfg} %{cfg.action}"
+            }
+    
+        filter {}
     end

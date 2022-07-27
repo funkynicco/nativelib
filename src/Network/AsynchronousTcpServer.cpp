@@ -8,7 +8,6 @@
 
 #ifdef NL_PLATFORM_WINDOWS
 #include <Windows.h>
-#endif
 
 namespace nl::network
 {
@@ -136,3 +135,4 @@ namespace nl::network
         return 0;
     }
 }
+#endif

@@ -58,4 +58,4 @@ workspace "nativelib"
 
     include "premake5.project.lua"
     
-    require "test"
+    --require "test"
