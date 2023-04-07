@@ -38,7 +38,7 @@ namespace nl::network
     };
 
 #ifdef NL_PLATFORM_WINDOWS
-    static DWORD _WorkerThread(LPVOID lp)
+    static DWORD WINAPI _WorkerThread(LPVOID lp)
     {
         WorkerThreadParameters* parameters = static_cast<WorkerThreadParameters*>(lp);
         return (DWORD)(parameters->pServer->*parameters->pfnWorkerThread)();
