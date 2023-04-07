@@ -33,6 +33,7 @@ namespace nl::systemlayer
         typedef int64_t TFileWrite(FileHandle fp, const void* ptr, int64_t numberOfBytesToWrite); // write
         typedef bool TFileFlush(FileHandle fp); // flush
         typedef bool TFileSetEndOfFile(FileHandle fp); // set end of file
+        typedef bool TFileOrDirectoryExists(const char* path);
 
         // sockets api (WIP)
     }
@@ -58,6 +59,7 @@ namespace nl::systemlayer
         delegates::TFileWrite* FileWrite;
         delegates::TFileFlush* FileFlush;
         delegates::TFileSetEndOfFile* FileSetEndOfFile;
+        delegates::TFileOrDirectoryExists* FileOrDirectoryExists;
     };
 
     const SystemLayerFunctions* GetSystemLayerFunctions();

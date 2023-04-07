@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 
 #include <NativeLib/IO/Stream.h>
+#include <NativeLib/Exceptions.h>
 
 namespace nl
 {

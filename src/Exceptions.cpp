@@ -108,6 +108,7 @@ const char* Win32Exception::GetWin32ErrorMessage(uint32_t dwCode)
     message[dwLen] = 0;
     return message;
 }
+#endif
 
 IOException::IOException(const char* msg) :
     Exception(msg)
@@ -118,7 +119,6 @@ IOException::IOException(const char* msg) :
     m_dwErrorCode = (DWORD)errno;
 #endif
 }
-#endif
 
 SocketException::SocketException(const char* message, uint32_t code) :
     Exception(message)

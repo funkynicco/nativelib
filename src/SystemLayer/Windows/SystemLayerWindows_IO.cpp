@@ -151,6 +151,17 @@ namespace nl::systemlayer::defaults
         return true;
     }
 
+    static bool FileOrDirectoryExists(const char* filename)
+    {
+        DWORD dwAttrib = GetFileAttributesA(filename);
+        if (dwAttrib == INVALID_FILE_ATTRIBUTES)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     bool SetFileIO(SystemLayerFunctions* functions)
     {
         functions->FileOpen = Open;
@@ -162,6 +173,7 @@ namespace nl::systemlayer::defaults
         functions->FileWrite = Write;
         functions->FileFlush = Flush;
         functions->FileSetEndOfFile = SetEndOfFile;
+        functions->FileOrDirectoryExists = FileOrDirectoryExists;
         return true;
     }
 }

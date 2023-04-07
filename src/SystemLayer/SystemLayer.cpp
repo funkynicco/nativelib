@@ -30,13 +30,19 @@ namespace nl::systemlayer
     bool GetDefaultSystemLayerFunctions(SystemLayerFunctions* functions)
     {
         if (!nl::systemlayer::defaults::SetAssert(functions))
+        {
             return false;
+        }
 
         if (!nl::systemlayer::defaults::SetMemory(functions))
+        {
             return false;
+        }
 
         if (!nl::systemlayer::defaults::SetFileIO(functions))
+        {
             return false;
+        }
 
         return true;
     }
@@ -45,7 +51,9 @@ namespace nl::systemlayer
     {
         SystemLayerFunctions functions;
         if (!GetDefaultSystemLayerFunctions(&functions))
+        {
             return false;
+        }
 
         SetSystemLayerFunctions(&functions);
         return true;

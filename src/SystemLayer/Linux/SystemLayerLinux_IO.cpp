@@ -56,6 +56,11 @@ namespace nl::systemlayer::defaults
         throw NotImplementedException();
     }
 
+    static bool FileOrDirectoryExists(const char* path)
+    {
+        throw NotImplementedException();
+    }
+
     bool SetFileIO(SystemLayerFunctions* functions)
     {
         functions->FileOpen = Open;
@@ -67,6 +72,7 @@ namespace nl::systemlayer::defaults
         functions->FileWrite = Write;
         functions->FileFlush = Flush;
         functions->FileSetEndOfFile = SetEndOfFile;
+        functions->FileOrDirectoryExists = FileOrDirectoryExists;
         return true;
     }
 }
