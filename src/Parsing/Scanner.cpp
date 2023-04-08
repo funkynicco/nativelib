@@ -52,14 +52,14 @@ namespace nl
         Scanner::Scanner() noexcept :
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
-            m_bEnableOperatorsExtension(false)
+            m_nExtensionFlags(0)
         {
         }
 
         Scanner::Scanner(std::string_view str) :
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
-            m_bEnableOperatorsExtension(false)
+            m_nExtensionFlags(0)
         {
             m_contextStack.Push(nl::ConstructShared<Context>(str.data(), str.data() + str.length()));
             SaveContext(); // save a duplicate
@@ -68,7 +68,7 @@ namespace nl
         Scanner::Scanner(const char* str, size_t length) :
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
-            m_bEnableOperatorsExtension(false)
+            m_nExtensionFlags(0)
         {
             nl_assert_if_debug(str != nullptr);
 
@@ -83,7 +83,7 @@ namespace nl
         Scanner::Scanner(const nl::String& str) :
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
-            m_bEnableOperatorsExtension(false)
+            m_nExtensionFlags(0)
         {
             auto container = nl::ConstructShared<nl::String>(str);
             m_contextStack.Push(nl::ConstructShared<Context>(container));
@@ -93,7 +93,7 @@ namespace nl
         Scanner::Scanner(nl::String&& str) :
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
-            m_bEnableOperatorsExtension(false)
+            m_nExtensionFlags(0)
         {
             auto container = nl::ConstructShared<nl::String>(std::move(str));
             m_contextStack.Push(nl::ConstructShared<Context>(container));
@@ -104,14 +104,14 @@ namespace nl
             m_endOfFileToken(0, TokenType::EndOfFile, OperatorType::Unset),
             m_errorToken(0, TokenType::Error, OperatorType::Unset),
             m_contextStack(std::move(other.m_contextStack)),
-            m_bEnableOperatorsExtension(other.m_bEnableOperatorsExtension)
+            m_nExtensionFlags(other.m_nExtensionFlags)
         {
         }
 
         Scanner& Scanner::operator =(Scanner&& other) noexcept
         {
             m_contextStack = std::move(other.m_contextStack);
-            m_bEnableOperatorsExtension = other.m_bEnableOperatorsExtension;
+            m_nExtensionFlags = other.m_nExtensionFlags;
             return *this;
         }
 
@@ -246,14 +246,24 @@ namespace nl
             return false;
         }
 
-        bool Scanner::IsOperatorsExtensionEnabled() const
+        bool Scanner::IsExtensionEnabled(Extension extension) const
         {
-            return m_bEnableOperatorsExtension;
+            const auto bit = 1 << (int)extension;
+            return (m_nExtensionFlags & bit) != 0;
         }
 
-        void Scanner::EnableOperatorsExtension(bool enable)
+        void Scanner::EnableExtension(Extension extension, bool enable)
         {
-            m_bEnableOperatorsExtension = enable;
+            const auto bit = 1 << (int)extension;
+
+            if (enable)
+            {
+                m_nExtensionFlags |= bit;
+            }
+            else
+            {
+                m_nExtensionFlags &= ~bit;
+            }
         }
 
         Token Scanner::Next()
@@ -300,6 +310,19 @@ namespace nl
 
                         continue;
                     }
+                }
+
+                if (*p == '#' &&
+                    IsExtensionEnabled(Extension::HashTagComment))
+                {
+                    ++p;
+                    if (!SkipSingleComment())
+                    {
+                        context->Empty();
+                        return m_endOfFileToken;
+                    }
+
+                    continue;
                 }
 
                 break;
@@ -494,7 +517,7 @@ namespace nl
                 return Token(context->Line, tokenType, operatorType, std::string_view(token_start, size_t(p - token_start)));
             }
 
-            if (m_bEnableOperatorsExtension)
+            if (IsExtensionEnabled(Extension::Operators))
             {
                 tokenType = TokenType::Operator;
                 if (ReadOperator(p, end, &operatorType))
@@ -566,10 +589,10 @@ namespace nl
                 tokenType = TokenType::Number;
                 result.Set(num, chars);
                 return true;
-            }
+                }
 
             return false; // no changes to token
-        }
+            }
 
         Scanner Scanner::FromFile(std::string_view filename)
         {
@@ -620,5 +643,5 @@ namespace nl
 
             return line;
         }
+        }
     }
-}

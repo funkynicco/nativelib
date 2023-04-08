@@ -17,6 +17,12 @@ namespace nl
 {
     namespace parsing
     {
+        enum class Extension
+        {
+            Operators,
+            HashTagComment,
+        };
+
         std::string_view TokenTypeToString(TokenType tokenType);
 
         DeclareGenericException(OpenFileFailedException, "Could not open file");
@@ -38,9 +44,9 @@ namespace nl
 
             Scanner(const Scanner&) = delete;
             Scanner& operator =(const Scanner&) = delete;
-            
-            bool IsOperatorsExtensionEnabled() const;
-            void EnableOperatorsExtension(bool enable = true);
+
+            bool IsExtensionEnabled(Extension extension) const;
+            void EnableExtension(Extension extension, bool enable = true);
 
             // Advances the scanner to the next token
             Token Next();
@@ -50,7 +56,7 @@ namespace nl
 
             // Pushes the context onto the context stack
             void SaveContext();
-            
+
             // Restores the previous context in the stack
             void RestoreContext();
 
@@ -68,7 +74,7 @@ namespace nl
             const Token m_endOfFileToken;
             const Token m_errorToken;
 
-            bool m_bEnableOperatorsExtension;
+            int m_nExtensionFlags;
 
             bool IsWhitespace(char c) const;
             bool IsKeyword(char c, bool first) const;
